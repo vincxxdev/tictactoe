@@ -16,7 +16,7 @@ const Game: React.FC = () => {
 
   const handleSquareClick = (i: number) => {
     if (!isGameInProgress || board[i] || !isMyTurn || surrenderRequesterLogin) {
-      return; // Not your turn, game over, square taken, or surrender pending
+      return; // Non è il tuo turno, partita finita, casella occupata o resa in sospeso
     }
     makeMove(i);
   };

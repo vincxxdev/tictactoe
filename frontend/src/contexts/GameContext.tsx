@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import socketService from '../services/socketService';
 import { IMessage } from '@stomp/stompjs';
 
-// Define the shape of the game state and context
+// Definizione dei tipi per lo stato del gioco e il contesto
 interface GameState {
     gameId: string;
     board: ('X' | 'O' | null)[];
@@ -47,13 +47,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (playerLogin) {
             socketService.connect(() => {
                 setIsConnected(true);
-                // Subscribe to the personal channel for game connection events
+                // Iscrivi al canale personale per gli eventi di connessione alla partita
                 socketService.subscribe(`/topic/game.connected/${playerLogin}`, (message) => {
                     const gameData = JSON.parse(message.body);
                     setGame(gameData);
                     subscribeToGameTopic(gameData.gameId);
                 });
-                 // Subscribe to the personal channel for game creation events
+                // Iscrivi al canale personale per gli eventi di creazione della partita
                 socketService.subscribe(`/topic/game.created/${playerLogin}`, (message) => {
                     const gameData = JSON.parse(message.body);
                     setGame(gameData);
