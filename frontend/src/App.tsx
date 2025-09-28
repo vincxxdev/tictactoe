@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Game from './components/Game';
+import Lobby from './components/Lobby';
+import { GameProvider, useGame } from './contexts/GameContext';
 import { adjectives, nouns } from './utils/nameGenerator';
 
-function App() {
-  const [username, setUsername] = useState('');
+const AppContent: React.FC = () => {
+  const { game, playerLogin, setPlayerLogin } = useGame();
 
   useEffect(() => {
     let storedName = localStorage.getItem('username');
@@ -11,13 +13,19 @@ function App() {
       storedName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
       localStorage.setItem('username', storedName);
     }
-    setUsername(storedName);
-  }, []);
+    setPlayerLogin(storedName);
+  }, [setPlayerLogin]);
 
+  return game ? <Game /> : <Lobby />;
+}
+
+function App() {
   return (
-    <div className="App">
-      <Game />
-    </div>
+    <GameProvider>
+      <div className="App">
+        <AppContent />
+      </div>
+    </GameProvider>
   );
 }
 

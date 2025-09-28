@@ -1,13 +1,17 @@
 import React from 'react';
+import Square from './Square';
 
 interface BoardProps {
-  // Props for the board will go here
+  squares: ('X' | 'O' | null)[];
+  onClick: (i: number) => void;
 }
 
-const Board: React.FC<BoardProps> = () => {
+const Board: React.FC<BoardProps> = ({ squares, onClick }) => {
   return (
-    <div className="grid grid-cols-3 gap-4">
-      {/* Squares will be rendered here */}
+    <div className="grid grid-cols-3 gap-4 p-4 bg-gray-900 rounded-lg">
+      {squares.map((square, i) => (
+        <Square key={i} value={square} onClick={() => onClick(i)} />
+      ))}
     </div>
   );
 };
