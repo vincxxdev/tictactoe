@@ -9,14 +9,13 @@ public class Game {
     private String[] board;
     private TicToe winner;
     private String currentPlayerLogin;
-    private String surrenderRequesterLogin; // New field
+    private String surrenderRequesterLogin;
 
     public Game() {
         this.board = new String[9];
     }
 
-    // Getters and Setters for all fields, including the new one
-
+    // Getters and Setters
     public String getGameId() {
         return gameId;
     }
