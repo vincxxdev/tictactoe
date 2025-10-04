@@ -15,10 +15,12 @@ A real-time multiplayer Tic Tac Toe game built with React (TypeScript) and Sprin
 ## 🏗️ Architecture
 
 ### Backend (Spring Boot)
+- **Redis Storage**: Distributed, persistent game state storage
 - **WebSocket Communication**: STOMP over SockJS for real-time messaging
 - **Bean Validation**: Input validation on all endpoints
 - **Global Exception Handling**: Consistent error responses
 - **Scheduled Cleanup**: Automatic removal of stale games
+- **Horizontal Scalability**: Redis allows multiple backend instances
 
 ### Frontend (React + TypeScript)
 - **Context API**: Centralized state management
@@ -48,6 +50,7 @@ A real-time multiplayer Tic Tac Toe game built with React (TypeScript) and Sprin
 - **Java 17** or higher
 - **Node.js 16** or higher
 - **Maven 3.6** or higher
+- **Redis** (optional for local development, required for production)
 
 ### 🎯 First Time Setup (5 minutes)
 
@@ -80,7 +83,19 @@ REACT_APP_ENV=production
 EOF
 ```
 
-#### 3. Install Dependencies
+#### 3. Start Redis (Development)
+
+```bash
+# Using Docker (recommended)
+docker run -d -p 6379:6379 --name tictactoe-redis redis:7-alpine
+
+# Or install Redis locally
+# macOS: brew install redis && redis-server
+# Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+# Windows: Use Redis for Windows or Docker
+```
+
+#### 4. Install Dependencies
 
 ```bash
 # Backend
@@ -253,6 +268,11 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 # WebSocket Origins (comma-separated)
 WEBSOCKET_ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
 # Game cleanup settings
 GAME_CLEANUP_INTERVAL=30
 GAME_MAX_IDLE_TIME=60
@@ -422,15 +442,30 @@ netstat -ano | findstr :3000
 taskkill /PID <PID> /F
 ```
 
+### Redis Connection Failed
+
+```bash
+# Check if Redis is running
+redis-cli ping
+# Expected response: PONG
+
+# Start Redis with Docker
+docker start tictactoe-redis
+
+# Check Redis logs
+docker logs tictactoe-redis
+```
+
 ### WebSocket Connection Failed
 
 1. Ensure backend is running on port 8080
-2. Check browser console for errors
-3. Verify CORS settings in `application.properties`
-4. Try in incognito mode to rule out browser extensions
-5. Check CORS/WebSocket origins configuration
-6. Verify firewall rules allow WebSocket connections
-7. Ensure HTTPS is used in production (wss:// not ws://)
+2. Ensure Redis is running and accessible
+3. Check browser console for errors
+4. Verify CORS settings in `application.properties`
+5. Try in incognito mode to rule out browser extensions
+6. Check CORS/WebSocket origins configuration
+7. Verify firewall rules allow WebSocket connections
+8. Ensure HTTPS is used in production (wss:// not ws://)
 
 ### Docker Build Fails
 
@@ -515,14 +550,18 @@ rm -rf target
 
 ## 🚀 Future Improvements
 
-- [ ] Add Redis for distributed storage
+- [x] ~~Add Redis for distributed storage~~
 - [ ] Implement user authentication
-- [ ] Add game history and statistics
+- [ ] Add game history and statistics (persist to database)
 - [ ] Implement matchmaking with ELO rating
 - [ ] Add chat functionality
 - [ ] Support for different board sizes
 - [ ] Mobile app with React Native
 - [ ] Add animations and sound effects
+- [ ] Add Pub/Sub for multi-instance WebSocket synchronization
+- [ ] Add CI/CD pipeline
+- [ ] Implement rate limiting
+- [ ] Add comprehensive monitoring
 
 ## 🤝 Contributing
 
