@@ -16,16 +16,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameServiceTest {
 
     private GameService gameService;
+    private GameStorage gameStorage;
     private Player player1;
     private Player player2;
 
     @BeforeEach
     void setUp() {
-        gameService = new GameService();
+        gameStorage = new GameStorage();
+        gameService = new GameService(gameStorage);
         player1 = new Player("Player1");
         player2 = new Player("Player2");
         // Clear the game storage before each test
-        GameStorage.getInstance().getGames().clear();
+        gameStorage.getGames().clear();
     }
 
     @Test

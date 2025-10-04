@@ -14,33 +14,39 @@ import java.util.UUID;
 @Service
 public class GameService {
 
+    private final GameStorage gameStorage;
+
+    public GameService(GameStorage gameStorage) {
+        this.gameStorage = gameStorage;
+    }
+
     public Game createGame(Player player) {
         Game game = new Game();
         game.setBoard(new String[9]);
         game.setGameId(UUID.randomUUID().toString());
         game.setPlayer1(player);
         game.setStatus(GameStatus.NEW);
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
 
     public Game connectToGame(Player player2, String gameId) throws InvalidParamException, InvalidGameException {
-        if (!GameStorage.getInstance().getGames().containsKey(gameId)) {
+        if (!gameStorage.getGames().containsKey(gameId)) {
             throw new InvalidParamException("Game with provided ID does not exist");
         }
-        Game game = GameStorage.getInstance().getGames().get(gameId);
+        Game game = gameStorage.getGames().get(gameId);
         if (game.getPlayer2() != null) {
             throw new InvalidGameException("Game is already full");
         }
         game.setPlayer2(player2);
         game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
         game.setStatus(GameStatus.IN_PROGRESS);
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
 
     public Game connectToRandomGame(Player player2) throws InvalidGameException {
-        Game game = GameStorage.getInstance().getGames().values().stream()
+        Game game = gameStorage.getGames().values().stream()
                 .filter(it -> it.getStatus().equals(GameStatus.NEW))
                 .findFirst().orElse(null);
 
@@ -51,15 +57,15 @@ public class GameService {
         game.setPlayer2(player2);
         game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
         game.setStatus(GameStatus.IN_PROGRESS);
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
     public Game gameplay(com.example.tictactoe.model.Move move, String gameId) throws InvalidParamException, InvalidGameException {
-        if (!GameStorage.getInstance().getGames().containsKey(gameId)) {
+        if (!gameStorage.getGames().containsKey(gameId)) {
             throw new InvalidParamException("Game with provided ID does not exist");
         }
 
-        Game game = GameStorage.getInstance().getGames().get(gameId);
+        Game game = gameStorage.getGames().get(gameId);
         if (game.getStatus().equals(GameStatus.FINISHED)) {
             throw new InvalidGameException("Game is already finished");
         }
@@ -89,7 +95,7 @@ public class GameService {
             game.setCurrentPlayerLogin(nextPlayerLogin);
         }
 
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
 
@@ -126,7 +132,7 @@ public class GameService {
             throw new InvalidGameException("Game is not in progress");
         }
         game.setSurrenderRequesterLogin(playerLogin);
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
 
@@ -144,14 +150,14 @@ public class GameService {
 
         // Reset surrender request after response
         game.setSurrenderRequesterLogin(null);
-        GameStorage.getInstance().setGame(game);
+        gameStorage.setGame(game);
         return game;
     }
 
     private Game getGameById(String gameId) throws InvalidParamException {
-        if (!GameStorage.getInstance().getGames().containsKey(gameId)) {
+        if (!gameStorage.getGames().containsKey(gameId)) {
             throw new InvalidParamException("Game with provided ID does not exist");
         }
-        return GameStorage.getInstance().getGames().get(gameId);
+        return gameStorage.getGames().get(gameId);
     }
 }

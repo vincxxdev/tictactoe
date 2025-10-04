@@ -14,16 +14,8 @@ class GameStorageTest {
 
     @BeforeEach
     void setUp() {
-        gameStorage = GameStorage.getInstance();
+        gameStorage = new GameStorage();
         gameStorage.getGames().clear();
-    }
-
-    @Test
-    void testGetInstance_ReturnsSingleton() {
-        GameStorage instance1 = GameStorage.getInstance();
-        GameStorage instance2 = GameStorage.getInstance();
-
-        assertSame(instance1, instance2);
     }
 
     @Test

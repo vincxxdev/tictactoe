@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.eq;
@@ -110,7 +111,9 @@ class GameControllerTest {
         when(gameService.connectToGame(player2, "invalid-game-id"))
                 .thenThrow(new InvalidParamException("Game not found"));
 
-        gameController.connectToGame(request);
+        assertThrows(InvalidParamException.class, () -> {
+            gameController.connectToGame(request);
+        });
 
         verify(gameService, times(1)).connectToGame(player2, "invalid-game-id");
         verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
@@ -142,7 +145,9 @@ class GameControllerTest {
         when(gameService.gameplay(move, "test-game-id"))
                 .thenThrow(new InvalidGameException("Not your turn"));
 
-        gameController.gamePlay(move);
+        assertThrows(InvalidGameException.class, () -> {
+            gameController.gamePlay(move);
+        });
 
         verify(gameService, times(1)).gameplay(move, "test-game-id");
         verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
@@ -172,7 +177,9 @@ class GameControllerTest {
         when(gameService.requestSurrender("test-game-id", player1.getLogin()))
                 .thenThrow(new InvalidGameException("Game not in progress"));
 
-        gameController.surrender(request);
+        assertThrows(InvalidGameException.class, () -> {
+            gameController.surrender(request);
+        });
 
         verify(gameService, times(1)).requestSurrender("test-game-id", player1.getLogin());
         verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
@@ -224,7 +231,9 @@ class GameControllerTest {
         when(gameService.respondToSurrender("test-game-id", player2.getLogin(), true))
                 .thenThrow(new InvalidGameException("No surrender request"));
 
-        gameController.surrenderResponse(response);
+        assertThrows(InvalidGameException.class, () -> {
+            gameController.surrenderResponse(response);
+        });
 
         verify(gameService, times(1))
                 .respondToSurrender("test-game-id", player2.getLogin(), true);

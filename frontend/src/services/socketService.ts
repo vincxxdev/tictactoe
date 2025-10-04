@@ -1,30 +1,48 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-
-const SOCKET_URL = 'http://localhost:8080/ws';
+import config from '../config/environment';
 
 class SocketService {
     private client: Client;
+    private connectionAttempts: number = 0;
+    private maxReconnectAttempts: number = 10;
 
     constructor() {
         this.client = new Client({
-            webSocketFactory: () => new SockJS(SOCKET_URL),
+            webSocketFactory: () => new SockJS(config.wsUrl),
             reconnectDelay: 5000,
             debug: (str) => {
-                console.log(new Date(), str);
+                if (config.isDevelopment) {
+                    console.log(new Date(), str);
+                }
             },
         });
     }
 
-    public connect(onConnectCallback: () => void): void {
+    public connect(onConnectCallback: () => void, onErrorCallback?: (error: string) => void): void {
         this.client.onConnect = () => {
             console.log('Connected to WebSocket');
+            this.connectionAttempts = 0;
             onConnectCallback();
         };
 
         this.client.onStompError = (frame) => {
-            console.error('Broker reported error: ' + frame.headers['message']);
+            const errorMessage = 'Broker reported error: ' + frame.headers['message'];
+            console.error(errorMessage);
             console.error('Additional details: ' + frame.body);
+            
+            if (onErrorCallback) {
+                onErrorCallback(errorMessage);
+            }
+        };
+
+        this.client.onWebSocketError = (error) => {
+            this.connectionAttempts++;
+            console.error('WebSocket error:', error);
+            
+            if (this.connectionAttempts >= this.maxReconnectAttempts && onErrorCallback) {
+                onErrorCallback('Failed to connect after multiple attempts. Please refresh the page.');
+            }
         };
 
         this.client.activate();

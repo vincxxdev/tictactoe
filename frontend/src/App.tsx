@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import Game from './components/Game';
 import Lobby from './components/Lobby';
+import ErrorBoundary from './components/ErrorBoundary';
 import { GameProvider, useGame } from './contexts/GameContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { adjectives, nouns } from './utils/nameGenerator';
 
 const AppContent: React.FC = () => {
-  const { game, playerLogin, setPlayerLogin } = useGame();
+  const { game, setPlayerLogin } = useGame();
 
   useEffect(() => {
     let storedName = localStorage.getItem('username');
@@ -21,11 +23,15 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <GameProvider>
-      <div className="App">
-        <AppContent />
-      </div>
-    </GameProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <GameProvider>
+          <div className="App">
+            <AppContent />
+          </div>
+        </GameProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 
