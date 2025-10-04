@@ -45,9 +45,9 @@ public class GameController {
             } else {
                 game = gameService.connectToGame(request.getPlayer(), request.getGameId());
             }
-            // Avvisa il giocatore che si è appena connesso
+            // Notify the player that they have connected to the game
             simpMessagingTemplate.convertAndSend("/topic/game.connected/" + request.getPlayer().getLogin(), game);
-            // Avvisa l'altro giocatore che qualcuno si è connesso
+            // Notify the other player that someone has connected to the game
             if (game.getPlayer2() != null) {
                  String otherPlayer = request.getPlayer().getLogin().equals(game.getPlayer1().getLogin()) ? game.getPlayer2().getLogin() : game.getPlayer1().getLogin();
                  simpMessagingTemplate.convertAndSend("/topic/game.connected/" + otherPlayer, game);
@@ -62,7 +62,7 @@ public class GameController {
         log.info("gameplay move: {} in game {}", move.getPlayerLogin(), move.getGameId());
         try {
             Game game = gameService.gameplay(move, move.getGameId());
-            // Aggiorna lo stato del gioco a entrambi i giocatori
+            // Update the game status for both players
             simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
         } catch (InvalidParamException | InvalidGameException e) {
             log.error("Error during gameplay: {}", e.getMessage());
