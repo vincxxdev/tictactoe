@@ -10,24 +10,81 @@ import com.example.tictactoe.model.TicToe;
 import com.example.tictactoe.storage.GameStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class GameServiceTest {
 
     private GameService gameService;
     private GameStorage gameStorage;
+    
+    @Mock
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    @Mock
+    private ValueOperations<String, Object> valueOperations;
+    
     private Player player1;
     private Player player2;
+    private Map<String, Game> inMemoryGames;
 
     @BeforeEach
     void setUp() {
-        gameStorage = new GameStorage();
+        // Setup mock Redis
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        
+        // In-memory storage for testing
+        inMemoryGames = new HashMap<>();
+        
+        // Mock Redis operations to use in-memory storage
+        lenient().doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            Game game = invocation.getArgument(1);
+            inMemoryGames.put(key, game);
+            return null;
+        }).when(valueOperations).set(anyString(), any(Game.class), anyLong(), any());
+        
+        lenient().when(valueOperations.get(anyString())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            return inMemoryGames.get(key);
+        });
+        
+        lenient().when(redisTemplate.keys(anyString())).thenAnswer(invocation -> {
+            Set<String> keys = new HashSet<>(inMemoryGames.keySet());
+            return keys;
+        });
+        
+        lenient().doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            inMemoryGames.remove(key);
+            return true;
+        }).when(redisTemplate).delete(anyString());
+        
+        // Create GameStorage with mocked Redis
+        gameStorage = new GameStorage(redisTemplate);
+        ReflectionTestUtils.setField(gameStorage, "keyPrefix", "tictactoe:game:");
+        ReflectionTestUtils.setField(gameStorage, "ttlHours", 24L);
+        
         gameService = new GameService(gameStorage);
         player1 = new Player("Player1");
         player2 = new Player("Player2");
+        
         // Clear the game storage before each test
-        gameStorage.getGames().clear();
+        inMemoryGames.clear();
     }
 
     @Test

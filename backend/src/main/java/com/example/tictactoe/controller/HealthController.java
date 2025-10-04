@@ -31,7 +31,7 @@ public class HealthController {
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> stats() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalGames", gameStorage.getGames().size());
+        stats.put("totalGames", gameStorage.getGameCount());
         stats.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(stats);
     }

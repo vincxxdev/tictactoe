@@ -4,98 +4,95 @@ import com.example.tictactoe.model.Game;
 import com.example.tictactoe.model.GameStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class GameStorage {
 
     private static final Logger log = LoggerFactory.getLogger(GameStorage.class);
-    private final Map<String, GameEntry> games = new ConcurrentHashMap<>();
+    private final RedisTemplate<String, Object> redisTemplate;
+    
+    @Value("${game.redis.key-prefix}")
+    private String keyPrefix;
+    
+    @Value("${game.redis.ttl-hours}")
+    private long ttlHours;
+
+    public GameStorage(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     public Map<String, Game> getGames() {
-        Map<String, Game> result = new ConcurrentHashMap<>();
-        games.forEach((key, entry) -> result.put(key, entry.getGame()));
+        Map<String, Game> result = new HashMap<>();
+        Set<String> keys = redisTemplate.keys(keyPrefix + "*");
+        if (keys != null) {
+            for (String key : keys) {
+                Game game = (Game) redisTemplate.opsForValue().get(key);
+                if (game != null) {
+                    result.put(game.getGameId(), game);
+                }
+            }
+        }
         return result;
     }
 
     public void setGame(Game game) {
-        games.put(game.getGameId(), new GameEntry(game));
-        log.debug("Game {} stored. Total active games: {}", game.getGameId(), games.size());
+        String key = keyPrefix + game.getGameId();
+        redisTemplate.opsForValue().set(key, game, ttlHours, TimeUnit.HOURS);
+        log.debug("Game {} stored in Redis with TTL of {} hours", game.getGameId(), ttlHours);
     }
 
     public Game getGame(String gameId) {
-        GameEntry entry = games.get(gameId);
-        if (entry != null) {
-            entry.updateLastAccessed();
-            return entry.getGame();
-        }
-        return null;
+        String key = keyPrefix + gameId;
+        return (Game) redisTemplate.opsForValue().get(key);
     }
 
     public void removeGame(String gameId) {
-        games.remove(gameId);
-        log.info("Game {} removed from storage", gameId);
+        String key = keyPrefix + gameId;
+        redisTemplate.delete(key);
+        log.info("Game {} removed from Redis", gameId);
     }
 
     /**
-     * Cleanup old games every 5 minutes
-     * Removes finished games older than 10 minutes and abandoned games older than 1 hour
+     * Cleanup old games every 30 minutes
+     * Removes finished games older than 10 minutes (Redis TTL handles most cleanup)
      */
-    @Scheduled(fixedRate = 300000) // 5 minutes
+    @Scheduled(fixedRate = 1800000) // 30 minutes
     public void cleanupOldGames() {
-        LocalDateTime now = LocalDateTime.now();
+        Set<String> keys = redisTemplate.keys(keyPrefix + "*");
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+
         int removedCount = 0;
-
-        for (Map.Entry<String, GameEntry> entry : games.entrySet()) {
-            GameEntry gameEntry = entry.getValue();
-            Game game = gameEntry.getGame();
-            LocalDateTime lastAccessed = gameEntry.getLastAccessed();
-
-            // Remove finished games older than 10 minutes
-            if (game.getStatus() == GameStatus.FINISHED && 
-                lastAccessed.plusMinutes(10).isBefore(now)) {
-                games.remove(entry.getKey());
-                removedCount++;
-                continue;
-            }
-
-            // Remove abandoned games (NEW status, older than 1 hour)
-            if (game.getStatus() == GameStatus.NEW && 
-                lastAccessed.plusHours(1).isBefore(now)) {
-                games.remove(entry.getKey());
+        for (String key : keys) {
+            Game game = (Game) redisTemplate.opsForValue().get(key);
+            if (game != null && game.getStatus() == GameStatus.FINISHED) {
+                // Shorten TTL for finished games to 10 minutes
+                redisTemplate.expire(key, 10, TimeUnit.MINUTES);
                 removedCount++;
             }
         }
 
         if (removedCount > 0) {
-            log.info("Cleaned up {} old games. Remaining games: {}", removedCount, games.size());
+            log.info("Updated TTL for {} finished games. Total games in Redis: {}", 
+                removedCount, keys.size());
         }
     }
 
-    private static class GameEntry {
-        private final Game game;
-        private LocalDateTime lastAccessed;
-
-        public GameEntry(Game game) {
-            this.game = game;
-            this.lastAccessed = LocalDateTime.now();
-        }
-
-        public Game getGame() {
-            return game;
-        }
-
-        public LocalDateTime getLastAccessed() {
-            return lastAccessed;
-        }
-
-        public void updateLastAccessed() {
-            this.lastAccessed = LocalDateTime.now();
-        }
+    /**
+     * Get count of active games
+     */
+    public long getGameCount() {
+        Set<String> keys = redisTemplate.keys(keyPrefix + "*");
+        return keys != null ? keys.size() : 0;
     }
 }
