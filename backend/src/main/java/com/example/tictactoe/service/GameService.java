@@ -103,11 +103,11 @@ public class GameService {
     }
 
     private boolean checkWinner(String[] board, TicToe ticToe) {
-        // Combinazione vincente
+        // Winning combination
         int[][] winCombinations = {
-                {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // Righe
-                {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // Colonne
-                {0, 4, 8}, {2, 4, 6}  // Diagonali
+                {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // Rows
+                {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // Columns
+                {0, 4, 8}, {2, 4, 6}  // Diagonals
         };
 
         for (int[] combination : winCombinations) {
@@ -142,7 +142,7 @@ public class GameService {
             game.setWinner(winnerSymbol);
         }
 
-        // Resetta la richiesta di resa dopo la risposta
+        // Reset surrender request after response
         game.setSurrenderRequesterLogin(null);
         GameStorage.getInstance().setGame(game);
         return game;
