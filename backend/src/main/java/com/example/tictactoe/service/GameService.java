@@ -128,10 +128,11 @@ public class GameService {
                 {0, 4, 8}, {2, 4, 6}  // Diagonals
         };
 
+        String symbol = ticToe.toString();
         for (int[] combination : winCombinations) {
-            if (board[combination[0]] == ticToe.toString() &&
-                board[combination[1]] == ticToe.toString() &&
-                board[combination[2]] == ticToe.toString()) {
+            if (board[combination[0]] != null && board[combination[0]].equals(symbol) &&
+                board[combination[1]] != null && board[combination[1]].equals(symbol) &&
+                board[combination[2]] != null && board[combination[2]].equals(symbol)) {
                 return true;
             }
         }
