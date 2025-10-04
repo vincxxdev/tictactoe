@@ -4,7 +4,6 @@ import com.example.tictactoe.exception.InvalidGameException;
 import com.example.tictactoe.exception.InvalidParamException;
 import com.example.tictactoe.model.ConnectRequest;
 import com.example.tictactoe.model.Game;
-import com.example.tictactoe.model.JoinRequest;
 import com.example.tictactoe.model.JoinResponse;
 import com.example.tictactoe.model.Move;
 import com.example.tictactoe.model.Player;
