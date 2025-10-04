@@ -109,9 +109,9 @@ class GameServiceTest {
 
         assertNotNull(game);
         assertEquals(player1, game.getPlayer1());
-        assertEquals(player2, game.getPlayer2());
-        assertEquals(GameStatus.IN_PROGRESS, game.getStatus());
-        assertEquals(player1.getLogin(), game.getCurrentPlayerLogin());
+        assertNull(game.getPlayer2()); // Player2 is not added yet
+        assertEquals(player2, game.getPendingJoinPlayer()); // But set as pending
+        assertEquals(GameStatus.NEW, game.getStatus()); // Status remains NEW until accepted
     }
 
     @Test
@@ -125,7 +125,10 @@ class GameServiceTest {
     void testConnectToGame_GameAlreadyFull() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         String gameId = createdGame.getGameId();
+        
+        // First, connect and accept player2
         gameService.connectToGame(player2, gameId);
+        gameService.respondToJoinRequest(gameId, player1.getLogin(), player2.getLogin(), true);
 
         Player player3 = new Player("Player3");
         assertThrows(InvalidGameException.class, () -> {
@@ -151,14 +154,17 @@ class GameServiceTest {
 
         assertNotNull(game);
         assertEquals(player1, game.getPlayer1());
-        assertEquals(player2, game.getPlayer2());
-        assertEquals(GameStatus.IN_PROGRESS, game.getStatus());
+        assertNull(game.getPlayer2()); // Player2 is not added yet
+        assertEquals(player2, game.getPendingJoinPlayer()); // But set as pending
+        assertEquals(GameStatus.NEW, game.getStatus()); // Status remains NEW until accepted
     }
 
     @Test
     void testGameplay_ValidMove() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         Move move = new Move();
         move.setPlayerLogin(player1.getLogin());
@@ -187,6 +193,8 @@ class GameServiceTest {
     void testGameplay_NotPlayerTurn() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         Move move = new Move();
         move.setPlayerLogin(player2.getLogin()); // Player 2 tries to move first
@@ -202,6 +210,8 @@ class GameServiceTest {
     void testGameplay_SquareNotEmpty() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         Move move1 = new Move();
         move1.setPlayerLogin(player1.getLogin());
@@ -223,6 +233,8 @@ class GameServiceTest {
     void testGameplay_WinCondition_HorizontalRow() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         // Player 1: 0, 1, 2 (winning row)
         // Player 2: 3, 4
@@ -240,6 +252,8 @@ class GameServiceTest {
     void testGameplay_WinCondition_VerticalColumn() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         // Player 1: 0, 3, 6 (winning column)
         // Player 2: 1, 2
@@ -257,6 +271,8 @@ class GameServiceTest {
     void testGameplay_WinCondition_Diagonal() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         // Player 1: 0, 4, 8 (winning diagonal)
         // Player 2: 1, 2
@@ -274,6 +290,8 @@ class GameServiceTest {
     void testGameplay_DrawCondition() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         // Create a draw scenario
         // X O X
@@ -297,6 +315,8 @@ class GameServiceTest {
     void testRequestSurrender_Success() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
 
         Game game = gameService.requestSurrender(createdGame.getGameId(), player1.getLogin());
 
@@ -317,6 +337,8 @@ class GameServiceTest {
     void testRespondToSurrender_Accepted() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
         gameService.requestSurrender(createdGame.getGameId(), player1.getLogin());
 
         Game game = gameService.respondToSurrender(createdGame.getGameId(), player2.getLogin(), true);
@@ -330,6 +352,8 @@ class GameServiceTest {
     void testRespondToSurrender_Declined() throws InvalidParamException, InvalidGameException {
         Game createdGame = gameService.createGame(player1);
         gameService.connectToGame(player2, createdGame.getGameId());
+        // Accept the join request
+        gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
         gameService.requestSurrender(createdGame.getGameId(), player1.getLogin());
 
         Game game = gameService.respondToSurrender(createdGame.getGameId(), player2.getLogin(), false);
@@ -346,6 +370,66 @@ class GameServiceTest {
 
         assertThrows(InvalidGameException.class, () -> {
             gameService.respondToSurrender(createdGame.getGameId(), player2.getLogin(), true);
+        });
+    }
+
+    @Test
+    void testRespondToJoinRequest_Accepted() throws InvalidParamException, InvalidGameException {
+        Game createdGame = gameService.createGame(player1);
+        gameService.connectToGame(player2, createdGame.getGameId());
+
+        Game game = gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
+
+        assertNotNull(game);
+        assertEquals(player1, game.getPlayer1());
+        assertEquals(player2, game.getPlayer2());
+        assertEquals(GameStatus.IN_PROGRESS, game.getStatus());
+        assertEquals(player1.getLogin(), game.getCurrentPlayerLogin());
+        assertNull(game.getPendingJoinPlayer());
+    }
+
+    @Test
+    void testRespondToJoinRequest_Rejected() throws InvalidParamException, InvalidGameException {
+        Game createdGame = gameService.createGame(player1);
+        gameService.connectToGame(player2, createdGame.getGameId());
+
+        Game game = gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), false);
+
+        assertNotNull(game);
+        assertEquals(player1, game.getPlayer1());
+        assertNull(game.getPlayer2());
+        assertEquals(GameStatus.NEW, game.getStatus());
+        assertNull(game.getPendingJoinPlayer());
+    }
+
+    @Test
+    void testRespondToJoinRequest_NoPendingPlayer() throws InvalidParamException, InvalidGameException {
+        Game createdGame = gameService.createGame(player1);
+
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.respondToJoinRequest(createdGame.getGameId(), player1.getLogin(), player2.getLogin(), true);
+        });
+    }
+
+    @Test
+    void testRespondToJoinRequest_WrongResponder() throws InvalidParamException, InvalidGameException {
+        Game createdGame = gameService.createGame(player1);
+        gameService.connectToGame(player2, createdGame.getGameId());
+
+        Player player3 = new Player("Player3");
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.respondToJoinRequest(createdGame.getGameId(), player3.getLogin(), player2.getLogin(), true);
+        });
+    }
+
+    @Test
+    void testConnectToGame_WithPendingJoinPlayer() throws InvalidParamException, InvalidGameException {
+        Game createdGame = gameService.createGame(player1);
+        gameService.connectToGame(player2, createdGame.getGameId());
+
+        Player player3 = new Player("Player3");
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.connectToGame(player3, createdGame.getGameId());
         });
     }
 

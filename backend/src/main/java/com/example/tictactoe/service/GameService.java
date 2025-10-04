@@ -44,9 +44,11 @@ public class GameService {
         if (game.getPlayer2() != null) {
             throw new InvalidGameException("Game is already full");
         }
-        game.setPlayer2(player2);
-        game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
-        game.setStatus(GameStatus.IN_PROGRESS);
+        if (game.getPendingJoinPlayer() != null) {
+            throw new InvalidGameException("There is already a pending join request");
+        }
+        // Set pending join player instead of directly adding player2
+        game.setPendingJoinPlayer(player2);
         game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
@@ -56,15 +58,15 @@ public class GameService {
         Game game = gameStorage.getGames().values().stream()
                 .filter(it -> it.getStatus().equals(GameStatus.NEW))
                 .filter(it -> !isGameTooOld(it))
+                .filter(it -> it.getPendingJoinPlayer() == null)
                 .findFirst().orElse(null);
 
         if (game == null) {
             return createGame(player2);
         }
         
-        game.setPlayer2(player2);
-        game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
-        game.setStatus(GameStatus.IN_PROGRESS);
+        // Set pending join player instead of directly adding player2
+        game.setPendingJoinPlayer(player2);
         game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
@@ -160,6 +162,35 @@ public class GameService {
 
         // Reset surrender request after response
         game.setSurrenderRequesterLogin(null);
+        gameStorage.setGame(game);
+        return game;
+    }
+
+    public Game respondToJoinRequest(String gameId, String responderLogin, String requesterLogin, boolean accepted) throws InvalidParamException, InvalidGameException {
+        Game game = getGameById(gameId);
+        
+        if (game.getPendingJoinPlayer() == null) {
+            throw new InvalidGameException("No pending join request");
+        }
+        
+        if (!game.getPlayer1().getLogin().equals(responderLogin)) {
+            throw new InvalidGameException("Only the game creator can respond to join requests");
+        }
+        
+        if (!game.getPendingJoinPlayer().getLogin().equals(requesterLogin)) {
+            throw new InvalidGameException("Invalid requester");
+        }
+
+        if (accepted) {
+            // Accept the join request - add player2 and start the game
+            game.setPlayer2(game.getPendingJoinPlayer());
+            game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
+            game.setStatus(GameStatus.IN_PROGRESS);
+        }
+        
+        // Clear the pending join player whether accepted or rejected
+        game.setPendingJoinPlayer(null);
+        game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
     }

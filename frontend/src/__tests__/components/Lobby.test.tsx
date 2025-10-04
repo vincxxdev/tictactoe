@@ -23,14 +23,6 @@ describe('Lobby Component', () => {
     );
   };
 
-  beforeEach(() => {
-    localStorage.setItem('username', 'TestPlayer');
-  });
-
-  afterEach(() => {
-    localStorage.clear();
-  });
-
   test('renders lobby with title', () => {
     renderLobby();
     

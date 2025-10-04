@@ -12,12 +12,14 @@ interface GameState {
     status: 'NEW' | 'IN_PROGRESS' | 'FINISHED';
     winner: 'X' | 'O' | null;
     surrenderRequesterLogin: string | null;
+    pendingJoinPlayer: { login: string } | null;
 }
 
 interface GameContextType {
     isConnected: boolean;
     game: GameState | null;
     playerLogin: string;
+    joinPending: boolean;
     setPlayerLogin: (login: string) => void;
     createGame: () => void;
     connectToRandomGame: () => void;
@@ -25,6 +27,7 @@ interface GameContextType {
     makeMove: (index: number) => void;
     requestSurrender: () => void;
     respondToSurrender: (accepted: boolean) => void;
+    respondToJoinRequest: (requesterLogin: string, accepted: boolean) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -33,6 +36,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     const [isConnected, setIsConnected] = useState(false);
     const [game, setGame] = useState<GameState | null>(null);
     const [playerLogin, setPlayerLogin] = useState('');
+    const [joinPending, setJoinPending] = useState(false);
 
     const handleGameUpdate = useCallback((message: IMessage) => {
         const gameData = JSON.parse(message.body);
@@ -51,6 +55,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                 socketService.subscribe(`/topic/game.connected/${playerLogin}`, (message) => {
                     const gameData = JSON.parse(message.body);
                     setGame(gameData);
+                    setJoinPending(false);
                     subscribeToGameTopic(gameData.gameId);
                 });
                 // Subscribe to the personal channel for game creation events
@@ -58,6 +63,28 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     const gameData = JSON.parse(message.body);
                     setGame(gameData);
                     subscribeToGameTopic(gameData.gameId);
+                });
+                // Subscribe to join request notifications (for game creator)
+                socketService.subscribe(`/topic/game.join.request/${playerLogin}`, (message) => {
+                    const gameData = JSON.parse(message.body);
+                    setGame(gameData);
+                });
+                // Subscribe to join pending notifications (for joining player)
+                socketService.subscribe(`/topic/game.join.pending/${playerLogin}`, (message) => {
+                    const gameData = JSON.parse(message.body);
+                    setGame(gameData);
+                    setJoinPending(true);
+                });
+                // Subscribe to join rejected notifications
+                socketService.subscribe(`/topic/game.join.rejected/${playerLogin}`, (message) => {
+                    setJoinPending(false);
+                    setGame(null);
+                    alert('Your join request was rejected by the game creator.');
+                });
+                // Subscribe to game updates
+                socketService.subscribe(`/topic/game.updated/${playerLogin}`, (message) => {
+                    const gameData = JSON.parse(message.body);
+                    setGame(gameData);
                 });
             });
 
@@ -102,8 +129,32 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const respondToJoinRequest = (requesterLogin: string, accepted: boolean) => {
+        if (game) {
+            socketService.sendMessage('/app/game.join.response', { 
+                responderLogin: playerLogin, 
+                requesterLogin, 
+                gameId: game.gameId, 
+                accepted 
+            });
+        }
+    };
+
     return (
-        <GameContext.Provider value={{ isConnected, game, playerLogin, setPlayerLogin, createGame, connectToRandomGame, connectToGameById, makeMove, requestSurrender, respondToSurrender }}>
+        <GameContext.Provider value={{ 
+            isConnected, 
+            game, 
+            playerLogin, 
+            joinPending,
+            setPlayerLogin, 
+            createGame, 
+            connectToRandomGame, 
+            connectToGameById, 
+            makeMove, 
+            requestSurrender, 
+            respondToSurrender,
+            respondToJoinRequest 
+        }}>
             {children}
         </GameContext.Provider>
     );

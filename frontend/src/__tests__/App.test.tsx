@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import App from '../App';
 
 // Mock socketService
@@ -23,31 +23,36 @@ describe('App Component', () => {
     expect(screen.getByText('Tic Tac Toe Online')).toBeInTheDocument();
   });
 
-  test('generates and stores username if not present', async () => {
+  test('shows username selection on app start', () => {
     render(<App />);
     
-    await waitFor(() => {
-      expect(localStorage.getItem('username')).toBeTruthy();
-    });
-    
-    const storedUsername = localStorage.getItem('username');
-    expect(storedUsername).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
+    expect(screen.getByText('Choose your username to start playing')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter your username')).toBeInTheDocument();
   });
 
-  test('uses existing username from localStorage', async () => {
-    localStorage.setItem('username', 'TestPlayer User');
-    
+  test('allows user to set username and proceed to lobby', async () => {
     render(<App />);
     
+    // Username selection screen should be visible
+    expect(screen.getByText('Choose your username to start playing')).toBeInTheDocument();
+    
+    const input = screen.getByPlaceholderText('Enter your username');
+    fireEvent.change(input, { target: { value: 'NewPlayer' } });
+    
+    const continueButton = screen.getByRole('button', { name: /continue/i });
+    fireEvent.click(continueButton);
+    
+    // Should now see the lobby
     await waitFor(() => {
-      expect(screen.getByText(/TestPlayer User/i)).toBeInTheDocument();
+      expect(screen.getByText('Create New Game')).toBeInTheDocument();
+      expect(screen.getByText(/NewPlayer/i)).toBeInTheDocument();
     });
   });
 
-  test('renders lobby by default when no game', () => {
+  test('always requires username selection on fresh load', () => {
     render(<App />);
     
-    expect(screen.getByText('Create New Game')).toBeInTheDocument();
-    expect(screen.getByText('Join Random Game')).toBeInTheDocument();
+    // Should always show username selection first
+    expect(screen.getByText('Choose your username to start playing')).toBeInTheDocument();
   });
 });

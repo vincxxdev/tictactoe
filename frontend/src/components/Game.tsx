@@ -3,13 +3,13 @@ import Board from './Board';
 import { useGame } from '../contexts/GameContext';
 
 const Game: React.FC = () => {
-  const { game, playerLogin, makeMove, requestSurrender, respondToSurrender } = useGame();
+  const { game, playerLogin, joinPending, makeMove, requestSurrender, respondToSurrender, respondToJoinRequest } = useGame();
 
   if (!game) {
     return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
   }
 
-  const { board, winner, status, currentPlayerLogin, player1, player2, surrenderRequesterLogin } = game;
+  const { board, winner, status, currentPlayerLogin, player1, player2, surrenderRequesterLogin, pendingJoinPlayer } = game;
 
   const isMyTurn = currentPlayerLogin === playerLogin;
   const isGameInProgress = status === 'IN_PROGRESS';
@@ -37,6 +37,12 @@ const Game: React.FC = () => {
       return "It's a Draw!";
     }
     if (status === 'NEW') {
+        if (joinPending) {
+            return "Waiting for game creator to accept...";
+        }
+        if (pendingJoinPlayer) {
+            return "Player wants to join...";
+        }
         return "Waiting for opponent to join...";
     }
     if (surrenderRequesterLogin) {
@@ -56,6 +62,23 @@ const Game: React.FC = () => {
             <div className='flex gap-x-4'>
                 <button onClick={() => respondToSurrender(true)} className='bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Accept</button>
                 <button onClick={() => respondToSurrender(false)} className='bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Decline</button>
+            </div>
+        </div>
+    )
+  }
+
+  const renderJoinRequestDialog = () => {
+    if (!pendingJoinPlayer || playerLogin !== player1.login) {
+        return null;
+    }
+    return (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-10">
+            <h2 className='text-3xl font-bold mb-4'>Player wants to join</h2>
+            <p className='text-xl mb-2'>{pendingJoinPlayer.login}</p>
+            <p className='text-lg mb-6'>Do you accept this player?</p>
+            <div className='flex gap-x-4'>
+                <button onClick={() => respondToJoinRequest(pendingJoinPlayer.login, true)} className='bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Accept</button>
+                <button onClick={() => respondToJoinRequest(pendingJoinPlayer.login, false)} className='bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Reject</button>
             </div>
         </div>
     )
@@ -89,6 +112,7 @@ const Game: React.FC = () => {
         </div>
         <div className="text-center mt-8 text-gray-500">Game ID: {game.gameId}</div>
       </div>
+      {renderJoinRequestDialog()}
       {renderSurrenderDialog()}
     </div>
   );

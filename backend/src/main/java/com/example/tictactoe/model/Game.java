@@ -12,6 +12,7 @@ public class Game {
     private TicToe winner;
     private String currentPlayerLogin;
     private String surrenderRequesterLogin;
+    private Player pendingJoinPlayer;
     private Instant createdAt;
     private Instant lastActivityAt;
 
@@ -84,6 +85,14 @@ public class Game {
 
     public void setSurrenderRequesterLogin(String surrenderRequesterLogin) {
         this.surrenderRequesterLogin = surrenderRequesterLogin;
+    }
+
+    public Player getPendingJoinPlayer() {
+        return pendingJoinPlayer;
+    }
+
+    public void setPendingJoinPlayer(Player pendingJoinPlayer) {
+        this.pendingJoinPlayer = pendingJoinPlayer;
     }
 
     public Instant getCreatedAt() {

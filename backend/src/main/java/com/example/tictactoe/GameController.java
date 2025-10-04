@@ -4,6 +4,8 @@ import com.example.tictactoe.exception.InvalidGameException;
 import com.example.tictactoe.exception.InvalidParamException;
 import com.example.tictactoe.model.ConnectRequest;
 import com.example.tictactoe.model.Game;
+import com.example.tictactoe.model.JoinRequest;
+import com.example.tictactoe.model.JoinResponse;
 import com.example.tictactoe.model.Move;
 import com.example.tictactoe.model.Player;
 import com.example.tictactoe.model.SurrenderRequest;
@@ -52,12 +54,34 @@ public class GameController {
         } else {
             game = gameService.connectToGame(request.getPlayer(), request.getGameId());
         }
-        // Notify the player that they have connected to the game
-        simpMessagingTemplate.convertAndSend("/topic/game.connected/" + request.getPlayer().getLogin(), game);
-        // Notify the other player that someone has connected to the game
-        if (game.getPlayer2() != null) {
-             String otherPlayer = request.getPlayer().getLogin().equals(game.getPlayer1().getLogin()) ? game.getPlayer2().getLogin() : game.getPlayer1().getLogin();
-             simpMessagingTemplate.convertAndSend("/topic/game.connected/" + otherPlayer, game);
+        
+        // If a new game was created for this player (random game with no available games)
+        if (game.getPlayer1().getLogin().equals(request.getPlayer().getLogin()) && game.getPendingJoinPlayer() == null) {
+            simpMessagingTemplate.convertAndSend("/topic/game.created/" + request.getPlayer().getLogin(), game);
+        } else if (game.getPendingJoinPlayer() != null) {
+            // Notify the joining player that request is pending
+            simpMessagingTemplate.convertAndSend("/topic/game.join.pending/" + request.getPlayer().getLogin(), game);
+            // Notify the game creator about the join request
+            simpMessagingTemplate.convertAndSend("/topic/game.join.request/" + game.getPlayer1().getLogin(), game);
+        }
+    }
+
+    @MessageMapping("/game.join.response")
+    public void respondToJoinRequest(@Valid JoinResponse response) throws InvalidParamException, InvalidGameException {
+        log.info("join response from: {} in game {} for requester {} -> {}", 
+            response.getResponderLogin(), response.getGameId(), response.getRequesterLogin(), response.getAccepted());
+        Game game = gameService.respondToJoinRequest(response.getGameId(), response.getResponderLogin(), 
+            response.getRequesterLogin(), response.getAccepted());
+        
+        if (response.getAccepted()) {
+            // Notify both players that the game has started
+            simpMessagingTemplate.convertAndSend("/topic/game.connected/" + game.getPlayer1().getLogin(), game);
+            simpMessagingTemplate.convertAndSend("/topic/game.connected/" + game.getPlayer2().getLogin(), game);
+        } else {
+            // Notify the requester that their join request was rejected
+            simpMessagingTemplate.convertAndSend("/topic/game.join.rejected/" + response.getRequesterLogin(), game);
+            // Notify the responder that the request was handled
+            simpMessagingTemplate.convertAndSend("/topic/game.updated/" + response.getResponderLogin(), game);
         }
     }
 

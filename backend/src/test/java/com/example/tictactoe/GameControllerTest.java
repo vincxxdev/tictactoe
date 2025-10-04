@@ -63,15 +63,21 @@ class GameControllerTest {
         request.setPlayer(player2);
         request.setGameId("test-game-id");
 
-        when(gameService.connectToGame(player2, "test-game-id")).thenReturn(mockGame);
+        Game pendingGame = new Game();
+        pendingGame.setGameId("test-game-id");
+        pendingGame.setPlayer1(player1);
+        pendingGame.setPendingJoinPlayer(player2);
+        pendingGame.setStatus(GameStatus.NEW);
+
+        when(gameService.connectToGame(player2, "test-game-id")).thenReturn(pendingGame);
 
         gameController.connectToGame(request);
 
         verify(gameService, times(1)).connectToGame(player2, "test-game-id");
         verify(simpMessagingTemplate, times(1))
-                .convertAndSend(eq("/topic/game.connected/" + player2.getLogin()), any(Game.class));
+                .convertAndSend(eq("/topic/game.join.pending/" + player2.getLogin()), any(Game.class));
         verify(simpMessagingTemplate, times(1))
-                .convertAndSend(eq("/topic/game.connected/" + player1.getLogin()), any(Game.class));
+                .convertAndSend(eq("/topic/game.join.request/" + player1.getLogin()), any(Game.class));
     }
 
     @Test
@@ -80,13 +86,21 @@ class GameControllerTest {
         request.setPlayer(player2);
         request.setGameId(null);
 
-        when(gameService.connectToRandomGame(player2)).thenReturn(mockGame);
+        Game pendingGame = new Game();
+        pendingGame.setGameId("test-game-id");
+        pendingGame.setPlayer1(player1);
+        pendingGame.setPendingJoinPlayer(player2);
+        pendingGame.setStatus(GameStatus.NEW);
+
+        when(gameService.connectToRandomGame(player2)).thenReturn(pendingGame);
 
         gameController.connectToGame(request);
 
         verify(gameService, times(1)).connectToRandomGame(player2);
         verify(simpMessagingTemplate, times(1))
-                .convertAndSend(eq("/topic/game.connected/" + player2.getLogin()), any(Game.class));
+                .convertAndSend(eq("/topic/game.join.pending/" + player2.getLogin()), any(Game.class));
+        verify(simpMessagingTemplate, times(1))
+                .convertAndSend(eq("/topic/game.join.request/" + player1.getLogin()), any(Game.class));
     }
 
     @Test
@@ -95,7 +109,13 @@ class GameControllerTest {
         request.setPlayer(player2);
         request.setGameId("");
 
-        when(gameService.connectToRandomGame(player2)).thenReturn(mockGame);
+        Game pendingGame = new Game();
+        pendingGame.setGameId("test-game-id");
+        pendingGame.setPlayer1(player1);
+        pendingGame.setPendingJoinPlayer(player2);
+        pendingGame.setStatus(GameStatus.NEW);
+
+        when(gameService.connectToRandomGame(player2)).thenReturn(pendingGame);
 
         gameController.connectToGame(request);
 

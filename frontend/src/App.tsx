@@ -1,22 +1,24 @@
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import Game from './components/Game';
 import Lobby from './components/Lobby';
+import UsernameSelection from './components/UsernameSelection';
 import ErrorBoundary from './components/ErrorBoundary';
 import { GameProvider, useGame } from './contexts/GameContext';
 import { ToastProvider } from './contexts/ToastContext';
-import { adjectives, nouns } from './utils/nameGenerator';
 
 const AppContent: React.FC = () => {
-  const { game, setPlayerLogin } = useGame();
+  const { game, setPlayerLogin, playerLogin } = useGame();
+  const [hasUsername, setHasUsername] = useState(false);
 
-  useEffect(() => {
-    let storedName = localStorage.getItem('username');
-    if (!storedName) {
-      storedName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
-      localStorage.setItem('username', storedName);
-    }
-    setPlayerLogin(storedName);
-  }, [setPlayerLogin]);
+  const handleUsernameSelected = (username: string) => {
+    setPlayerLogin(username);
+    setHasUsername(true);
+  };
+
+  // Always require username selection if not set
+  if (!hasUsername || !playerLogin) {
+    return <UsernameSelection onUsernameSelected={handleUsernameSelected} />;
+  }
 
   return game ? <Game /> : <Lobby />;
 }
