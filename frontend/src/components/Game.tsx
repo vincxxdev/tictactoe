@@ -3,20 +3,20 @@ import Board from './Board';
 import { useGame } from '../contexts/GameContext';
 
 const Game: React.FC = () => {
-  const { game, playerLogin, joinPending, makeMove, requestSurrender, respondToSurrender, respondToJoinRequest } = useGame();
+  const { game, playerLogin, joinPending, makeMove, requestSurrender, respondToSurrender, respondToJoinRequest, requestRematch, respondToRematch, returnToLobby } = useGame();
 
   if (!game) {
     return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
   }
 
-  const { board, winner, status, currentPlayerLogin, player1, player2, surrenderRequesterLogin, pendingJoinPlayer } = game;
+  const { board, winner, status, currentPlayerLogin, player1, player2, surrenderRequesterLogin, pendingJoinPlayer, rematchRequesterLogin } = game;
 
   const isMyTurn = currentPlayerLogin === playerLogin;
   const isGameInProgress = status === 'IN_PROGRESS';
 
   const handleSquareClick = (i: number) => {
-    if (!isGameInProgress || board[i] || !isMyTurn || surrenderRequesterLogin) {
-      return; // Not your turn, game finished, cell occupied or surrender pending
+    if (!isGameInProgress || board[i] || !isMyTurn || surrenderRequesterLogin || rematchRequesterLogin) {
+      return; // Not your turn, game finished, cell occupied, surrender pending, or rematch pending
     }
     makeMove(i);
   };
@@ -84,6 +84,22 @@ const Game: React.FC = () => {
     )
   }
 
+  const renderRematchDialog = () => {
+    if (!rematchRequesterLogin || rematchRequesterLogin === playerLogin) {
+        return null;
+    }
+    return (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-20">
+            <h2 className='text-3xl font-bold mb-4'>Opponent wants a rematch</h2>
+            <p className='text-xl mb-6'>Do you accept?</p>
+            <div className='flex gap-x-4'>
+                <button onClick={() => respondToRematch(true)} className='bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Accept</button>
+                <button onClick={() => respondToRematch(false)} className='bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-lg text-xl'>Decline</button>
+            </div>
+        </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 relative">
       <div className="w-full max-w-md mx-auto">
@@ -96,7 +112,7 @@ const Game: React.FC = () => {
         </div>
         <Board squares={board} onClick={handleSquareClick} />
         <div className="mt-6 text-center">
-            {isGameInProgress && !surrenderRequesterLogin && (
+            {isGameInProgress && !surrenderRequesterLogin && !rematchRequesterLogin && (
                 <button onClick={requestSurrender} className='bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded-lg'>
                     Surrender
                 </button>
@@ -104,16 +120,25 @@ const Game: React.FC = () => {
             {surrenderRequesterLogin === playerLogin && (
                 <p className='text-yellow-400'>Surrender request sent...</p>
             )}
-            {status === 'FINISHED' && (
-                <a href='/' className='bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition duration-200'>
-                    Play Again
-                </a>
+            {rematchRequesterLogin === playerLogin && (
+                <p className='text-blue-400'>Rematch request sent...</p>
+            )}
+            {status === 'FINISHED' && !rematchRequesterLogin && (
+                <div className='flex gap-x-4 justify-center'>
+                    <button onClick={returnToLobby} className='bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition duration-200'>
+                        Return to Lobby
+                    </button>
+                    <button onClick={requestRematch} className='bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition duration-200'>
+                        Rematch
+                    </button>
+                </div>
             )}
         </div>
         <div className="text-center mt-8 text-gray-500">Game ID: {game.gameId}</div>
       </div>
       {renderJoinRequestDialog()}
       {renderSurrenderDialog()}
+      {renderRematchDialog()}
     </div>
   );
 };

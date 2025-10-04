@@ -13,6 +13,7 @@ public class Game {
     private String currentPlayerLogin;
     private String surrenderRequesterLogin;
     private Player pendingJoinPlayer;
+    private String rematchRequesterLogin;
     private Instant createdAt;
     private Instant lastActivityAt;
 
@@ -113,5 +114,13 @@ public class Game {
 
     public void updateLastActivity() {
         this.lastActivityAt = Instant.now();
+    }
+
+    public String getRematchRequesterLogin() {
+        return rematchRequesterLogin;
+    }
+
+    public void setRematchRequesterLogin(String rematchRequesterLogin) {
+        this.rematchRequesterLogin = rematchRequesterLogin;
     }
 }

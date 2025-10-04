@@ -13,6 +13,7 @@ interface GameState {
     winner: 'X' | 'O' | null;
     surrenderRequesterLogin: string | null;
     pendingJoinPlayer: { login: string } | null;
+    rematchRequesterLogin: string | null;
 }
 
 interface GameContextType {
@@ -28,6 +29,9 @@ interface GameContextType {
     requestSurrender: () => void;
     respondToSurrender: (accepted: boolean) => void;
     respondToJoinRequest: (requesterLogin: string, accepted: boolean) => void;
+    requestRematch: () => void;
+    respondToRematch: (accepted: boolean) => void;
+    returnToLobby: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -140,6 +144,23 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const requestRematch = () => {
+        if (game) {
+            socketService.sendMessage('/app/game.rematch', { playerLogin, gameId: game.gameId });
+        }
+    };
+
+    const respondToRematch = (accepted: boolean) => {
+        if (game) {
+            socketService.sendMessage('/app/game.rematch.response', { playerLogin, gameId: game.gameId, accepted });
+        }
+    };
+
+    const returnToLobby = () => {
+        setGame(null);
+        setJoinPending(false);
+    };
+
     return (
         <GameContext.Provider value={{ 
             isConnected, 
@@ -153,7 +174,10 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
             makeMove, 
             requestSurrender, 
             respondToSurrender,
-            respondToJoinRequest 
+            respondToJoinRequest,
+            requestRematch,
+            respondToRematch,
+            returnToLobby
         }}>
             {children}
         </GameContext.Provider>

@@ -259,5 +259,112 @@ class GameControllerTest {
                 .respondToSurrender("test-game-id", player2.getLogin(), true);
         verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
     }
+
+    @Test
+    void testRematch() throws InvalidParamException, InvalidGameException {
+        RematchRequest request = new RematchRequest();
+        request.setPlayerLogin(player1.getLogin());
+        request.setGameId("test-game-id");
+
+        Game finishedGame = new Game();
+        finishedGame.setGameId("test-game-id");
+        finishedGame.setPlayer1(player1);
+        finishedGame.setPlayer2(player2);
+        finishedGame.setStatus(GameStatus.FINISHED);
+        finishedGame.setRematchRequesterLogin(player1.getLogin());
+
+        when(gameService.requestRematch("test-game-id", player1.getLogin())).thenReturn(finishedGame);
+
+        gameController.rematch(request);
+
+        verify(gameService, times(1)).requestRematch("test-game-id", player1.getLogin());
+        verify(simpMessagingTemplate, times(1))
+                .convertAndSend(eq("/topic/game.test-game-id"), any(Game.class));
+    }
+
+    @Test
+    void testRematch_WithException() throws InvalidParamException, InvalidGameException {
+        RematchRequest request = new RematchRequest();
+        request.setPlayerLogin(player1.getLogin());
+        request.setGameId("test-game-id");
+
+        when(gameService.requestRematch("test-game-id", player1.getLogin()))
+                .thenThrow(new InvalidGameException("Game not finished"));
+
+        assertThrows(InvalidGameException.class, () -> {
+            gameController.rematch(request);
+        });
+
+        verify(gameService, times(1)).requestRematch("test-game-id", player1.getLogin());
+        verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
+    }
+
+    @Test
+    void testRematchResponse_Accepted() throws InvalidParamException, InvalidGameException {
+        RematchResponse response = new RematchResponse();
+        response.setPlayerLogin(player2.getLogin());
+        response.setGameId("test-game-id");
+        response.setAccepted(true);
+
+        Game rematchGame = new Game();
+        rematchGame.setGameId("test-game-id");
+        rematchGame.setPlayer1(player1);
+        rematchGame.setPlayer2(player2);
+        rematchGame.setStatus(GameStatus.IN_PROGRESS);
+        rematchGame.setCurrentPlayerLogin(player1.getLogin());
+
+        when(gameService.respondToRematch("test-game-id", player2.getLogin(), true))
+                .thenReturn(rematchGame);
+
+        gameController.rematchResponse(response);
+
+        verify(gameService, times(1))
+                .respondToRematch("test-game-id", player2.getLogin(), true);
+        verify(simpMessagingTemplate, times(1))
+                .convertAndSend(eq("/topic/game.test-game-id"), any(Game.class));
+    }
+
+    @Test
+    void testRematchResponse_Declined() throws InvalidParamException, InvalidGameException {
+        RematchResponse response = new RematchResponse();
+        response.setPlayerLogin(player2.getLogin());
+        response.setGameId("test-game-id");
+        response.setAccepted(false);
+
+        Game finishedGame = new Game();
+        finishedGame.setGameId("test-game-id");
+        finishedGame.setPlayer1(player1);
+        finishedGame.setPlayer2(player2);
+        finishedGame.setStatus(GameStatus.FINISHED);
+
+        when(gameService.respondToRematch("test-game-id", player2.getLogin(), false))
+                .thenReturn(finishedGame);
+
+        gameController.rematchResponse(response);
+
+        verify(gameService, times(1))
+                .respondToRematch("test-game-id", player2.getLogin(), false);
+        verify(simpMessagingTemplate, times(1))
+                .convertAndSend(eq("/topic/game.test-game-id"), any(Game.class));
+    }
+
+    @Test
+    void testRematchResponse_WithException() throws InvalidParamException, InvalidGameException {
+        RematchResponse response = new RematchResponse();
+        response.setPlayerLogin(player2.getLogin());
+        response.setGameId("test-game-id");
+        response.setAccepted(true);
+
+        when(gameService.respondToRematch("test-game-id", player2.getLogin(), true))
+                .thenThrow(new InvalidGameException("No rematch request"));
+
+        assertThrows(InvalidGameException.class, () -> {
+            gameController.rematchResponse(response);
+        });
+
+        verify(gameService, times(1))
+                .respondToRematch("test-game-id", player2.getLogin(), true);
+        verify(simpMessagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
+    }
 }
 

@@ -283,7 +283,8 @@ describe('Game Component', () => {
 
     render(<Game />);
     
-    expect(screen.getByText('Play Again')).toBeInTheDocument();
+    expect(screen.getByText('Return to Lobby')).toBeInTheDocument();
+    expect(screen.getByText('Rematch')).toBeInTheDocument();
   });
 
   test('displays waiting message when player2 is null', () => {

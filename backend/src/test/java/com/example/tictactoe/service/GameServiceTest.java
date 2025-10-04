@@ -433,6 +433,129 @@ class GameServiceTest {
         });
     }
 
+    @Test
+    void testRequestRematch() throws InvalidParamException, InvalidGameException {
+        // Create and finish a game
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.FINISHED);
+        game.setWinner(TicToe.X);
+        gameStorage.setGame(game);
+
+        // Request rematch
+        Game rematchGame = gameService.requestRematch(game.getGameId(), player1.getLogin());
+
+        assertNotNull(rematchGame);
+        assertEquals(player1.getLogin(), rematchGame.getRematchRequesterLogin());
+        assertEquals(GameStatus.FINISHED, rematchGame.getStatus());
+    }
+
+    @Test
+    void testRequestRematch_GameNotFinished() {
+        // Create a game in progress
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.IN_PROGRESS);
+        game.setCurrentPlayerLogin(player1.getLogin());
+        gameStorage.setGame(game);
+
+        // Should throw exception because game is not finished
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.requestRematch(game.getGameId(), player1.getLogin());
+        });
+    }
+
+    @Test
+    void testRequestRematch_InvalidGameId() {
+        assertThrows(InvalidParamException.class, () -> {
+            gameService.requestRematch("invalid-game-id", player1.getLogin());
+        });
+    }
+
+    @Test
+    void testRespondToRematch_Accepted() throws InvalidParamException, InvalidGameException {
+        // Create and finish a game
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.FINISHED);
+        game.setWinner(TicToe.X);
+        game.setRematchRequesterLogin(player1.getLogin());
+        String[] finishedBoard = {"X", "X", "X", "O", "O", null, null, null, null};
+        game.setBoard(finishedBoard);
+        gameStorage.setGame(game);
+
+        // Accept rematch
+        Game rematchGame = gameService.respondToRematch(game.getGameId(), player2.getLogin(), true);
+
+        assertNotNull(rematchGame);
+        assertNull(rematchGame.getRematchRequesterLogin());
+        assertEquals(GameStatus.IN_PROGRESS, rematchGame.getStatus());
+        assertNull(rematchGame.getWinner());
+        assertEquals(player1.getLogin(), rematchGame.getCurrentPlayerLogin());
+        
+        // Check board is reset
+        for (String cell : rematchGame.getBoard()) {
+            assertNull(cell);
+        }
+    }
+
+    @Test
+    void testRespondToRematch_Declined() throws InvalidParamException, InvalidGameException {
+        // Create and finish a game
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.FINISHED);
+        game.setWinner(TicToe.X);
+        game.setRematchRequesterLogin(player1.getLogin());
+        gameStorage.setGame(game);
+
+        // Decline rematch
+        Game rematchGame = gameService.respondToRematch(game.getGameId(), player2.getLogin(), false);
+
+        assertNotNull(rematchGame);
+        assertNull(rematchGame.getRematchRequesterLogin());
+        assertEquals(GameStatus.FINISHED, rematchGame.getStatus());
+        assertEquals(TicToe.X, rematchGame.getWinner());
+    }
+
+    @Test
+    void testRespondToRematch_NoRematchRequest() {
+        // Create a finished game without rematch request
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.FINISHED);
+        game.setWinner(TicToe.X);
+        gameStorage.setGame(game);
+
+        // Should throw exception because there's no rematch request
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.respondToRematch(game.getGameId(), player2.getLogin(), true);
+        });
+    }
+
+    @Test
+    void testRespondToRematch_RequesterCannotRespond() {
+        // Create a finished game with rematch request
+        Game game = gameService.createGame(player1);
+        game.setPlayer2(player2);
+        game.setStatus(GameStatus.FINISHED);
+        game.setWinner(TicToe.X);
+        game.setRematchRequesterLogin(player1.getLogin());
+        gameStorage.setGame(game);
+
+        // Should throw exception because the requester cannot respond to their own request
+        assertThrows(InvalidGameException.class, () -> {
+            gameService.respondToRematch(game.getGameId(), player1.getLogin(), true);
+        });
+    }
+
+    @Test
+    void testRespondToRematch_InvalidGameId() {
+        assertThrows(InvalidParamException.class, () -> {
+            gameService.respondToRematch("invalid-game-id", player2.getLogin(), true);
+        });
+    }
+
     // Helper method to make moves
     private Game playMove(String gameId, Player player, int squareIndex) throws InvalidParamException, InvalidGameException {
         Move move = new Move();

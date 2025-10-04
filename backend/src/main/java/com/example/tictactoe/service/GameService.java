@@ -218,4 +218,36 @@ public class GameService {
         Duration age = Duration.between(game.getCreatedAt(), Instant.now());
         return age.toMinutes() > newGameMaxAgeMinutes;
     }
+
+    public Game requestRematch(String gameId, String playerLogin) throws InvalidParamException, InvalidGameException {
+        Game game = getGameById(gameId);
+        if (game.getStatus() != GameStatus.FINISHED) {
+            throw new InvalidGameException("Can only request rematch for finished games");
+        }
+        game.setRematchRequesterLogin(playerLogin);
+        gameStorage.setGame(game);
+        return game;
+    }
+
+    public Game respondToRematch(String gameId, String responderLogin, boolean accepted) throws InvalidParamException, InvalidGameException {
+        Game game = getGameById(gameId);
+        if (game.getRematchRequesterLogin() == null || game.getRematchRequesterLogin().equals(responderLogin)) {
+            throw new InvalidGameException("No rematch request to respond to");
+        }
+
+        if (accepted) {
+            // Reset the game for a rematch
+            game.setBoard(new String[9]);
+            game.setStatus(GameStatus.IN_PROGRESS);
+            game.setWinner(null);
+            game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
+            game.setSurrenderRequesterLogin(null);
+        }
+
+        // Reset rematch request after response
+        game.setRematchRequesterLogin(null);
+        game.updateLastActivity();
+        gameStorage.setGame(game);
+        return game;
+    }
 }

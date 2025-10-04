@@ -7,6 +7,8 @@ import com.example.tictactoe.model.Game;
 import com.example.tictactoe.model.JoinResponse;
 import com.example.tictactoe.model.Move;
 import com.example.tictactoe.model.Player;
+import com.example.tictactoe.model.RematchRequest;
+import com.example.tictactoe.model.RematchResponse;
 import com.example.tictactoe.model.SurrenderRequest;
 import com.example.tictactoe.model.SurrenderResponse;
 import com.example.tictactoe.service.GameService;
@@ -103,6 +105,20 @@ public class GameController {
     public void surrenderResponse(@Valid SurrenderResponse response) throws InvalidParamException, InvalidGameException {
         log.info("surrender response from: {} in game {} -> {}", response.getPlayerLogin(), response.getGameId(), response.isAccepted());
         Game game = gameService.respondToSurrender(response.getGameId(), response.getPlayerLogin(), response.isAccepted());
+        simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
+    }
+
+    @MessageMapping("/game.rematch")
+    public void rematch(@Valid RematchRequest request) throws InvalidParamException, InvalidGameException {
+        log.info("rematch request from: {} in game {}", request.getPlayerLogin(), request.getGameId());
+        Game game = gameService.requestRematch(request.getGameId(), request.getPlayerLogin());
+        simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
+    }
+
+    @MessageMapping("/game.rematch.response")
+    public void rematchResponse(@Valid RematchResponse response) throws InvalidParamException, InvalidGameException {
+        log.info("rematch response from: {} in game {} -> {}", response.getPlayerLogin(), response.getGameId(), response.isAccepted());
+        Game game = gameService.respondToRematch(response.getGameId(), response.getPlayerLogin(), response.isAccepted());
         simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
     }
 
