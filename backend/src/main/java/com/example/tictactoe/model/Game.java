@@ -1,5 +1,7 @@
 package com.example.tictactoe.model;
 
+import java.time.Instant;
+
 public class Game {
 
     private String gameId;
@@ -10,9 +12,13 @@ public class Game {
     private TicToe winner;
     private String currentPlayerLogin;
     private String surrenderRequesterLogin;
+    private Instant createdAt;
+    private Instant lastActivityAt;
 
     public Game() {
         this.board = new String[9];
+        this.createdAt = Instant.now();
+        this.lastActivityAt = Instant.now();
     }
 
     // Getters and Setters
@@ -78,5 +84,25 @@ public class Game {
 
     public void setSurrenderRequesterLogin(String surrenderRequesterLogin) {
         this.surrenderRequesterLogin = surrenderRequesterLogin;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
+    }
+
+    public void setLastActivityAt(Instant lastActivityAt) {
+        this.lastActivityAt = lastActivityAt;
+    }
+
+    public void updateLastActivity() {
+        this.lastActivityAt = Instant.now();
     }
 }

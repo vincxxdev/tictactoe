@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
 import { useGame } from '../contexts/GameContext';
+import AvailableGames from './AvailableGames';
 
 const Lobby: React.FC = () => {
     const { playerLogin, createGame, connectToGameById, connectToRandomGame } = useGame();
     const [gameIdInput, setGameIdInput] = useState('');
+    const [showAvailableGames, setShowAvailableGames] = useState(false);
+
+    if (showAvailableGames) {
+        return <AvailableGames onBack={() => setShowAvailableGames(false)} />;
+    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
@@ -18,6 +24,13 @@ const Lobby: React.FC = () => {
                     className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-lg text-xl transition duration-200 mb-4"
                 >
                     Create New Game
+                </button>
+
+                <button
+                    onClick={() => setShowAvailableGames(true)}
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-xl transition duration-200 mb-4"
+                >
+                    Join Game
                 </button>
 
                 <button

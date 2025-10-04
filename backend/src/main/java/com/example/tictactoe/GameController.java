@@ -16,9 +16,14 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Controller
+@RestController
 @Validated
+@CrossOrigin(origins = "*")
 public class GameController {
 
     private static final Logger log = LoggerFactory.getLogger(GameController.class);
@@ -76,5 +81,11 @@ public class GameController {
         log.info("surrender response from: {} in game {} -> {}", response.getPlayerLogin(), response.getGameId(), response.isAccepted());
         Game game = gameService.respondToSurrender(response.getGameId(), response.getPlayerLogin(), response.isAccepted());
         simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
+    }
+
+    @GetMapping("/api/games/available")
+    public java.util.List<Game> getAvailableGames() {
+        log.info("get available games request");
+        return gameService.getAvailableGames();
     }
 }

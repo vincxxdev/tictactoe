@@ -7,14 +7,20 @@ import com.example.tictactoe.model.GameStatus;
 import com.example.tictactoe.model.Player;
 import com.example.tictactoe.model.TicToe;
 import com.example.tictactoe.storage.GameStorage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
 public class GameService {
 
     private final GameStorage gameStorage;
+    
+    @Value("${game.new-game-max-age-minutes:10}")
+    private int newGameMaxAgeMinutes;
 
     public GameService(GameStorage gameStorage) {
         this.gameStorage = gameStorage;
@@ -41,6 +47,7 @@ public class GameService {
         game.setPlayer2(player2);
         game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
         game.setStatus(GameStatus.IN_PROGRESS);
+        game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
     }
@@ -48,6 +55,7 @@ public class GameService {
     public Game connectToRandomGame(Player player2) throws InvalidGameException {
         Game game = gameStorage.getGames().values().stream()
                 .filter(it -> it.getStatus().equals(GameStatus.NEW))
+                .filter(it -> !isGameTooOld(it))
                 .findFirst().orElse(null);
 
         if (game == null) {
@@ -57,6 +65,7 @@ public class GameService {
         game.setPlayer2(player2);
         game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
         game.setStatus(GameStatus.IN_PROGRESS);
+        game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
     }
@@ -95,6 +104,7 @@ public class GameService {
             game.setCurrentPlayerLogin(nextPlayerLogin);
         }
 
+        game.updateLastActivity();
         gameStorage.setGame(game);
         return game;
     }
@@ -159,5 +169,21 @@ public class GameService {
             throw new InvalidParamException("Game with provided ID does not exist");
         }
         return gameStorage.getGames().get(gameId);
+    }
+
+    public java.util.List<Game> getAvailableGames() {
+        return gameStorage.getGames().values().stream()
+                .filter(game -> game.getStatus().equals(GameStatus.NEW))
+                .filter(game -> !isGameTooOld(game))
+                .sorted((g1, g2) -> g2.getCreatedAt().compareTo(g1.getCreatedAt()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private boolean isGameTooOld(Game game) {
+        if (game.getCreatedAt() == null) {
+            return false;
+        }
+        Duration age = Duration.between(game.getCreatedAt(), Instant.now());
+        return age.toMinutes() > newGameMaxAgeMinutes;
     }
 }
