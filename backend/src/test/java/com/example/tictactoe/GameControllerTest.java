@@ -306,22 +306,25 @@ class GameControllerTest {
         response.setGameId("test-game-id");
         response.setAccepted(true);
 
-        Game rematchGame = new Game();
-        rematchGame.setGameId("test-game-id");
-        rematchGame.setPlayer1(player1);
-        rematchGame.setPlayer2(player2);
-        rematchGame.setStatus(GameStatus.IN_PROGRESS);
-        rematchGame.setCurrentPlayerLogin(player1.getLogin());
+        Game newGame = new Game();
+        newGame.setGameId("new-game-id"); // Different game ID for new game
+        newGame.setPlayer1(player1);
+        newGame.setPlayer2(player2);
+        newGame.setStatus(GameStatus.IN_PROGRESS);
+        newGame.setCurrentPlayerLogin(player1.getLogin());
 
         when(gameService.respondToRematch("test-game-id", player2.getLogin(), true))
-                .thenReturn(rematchGame);
+                .thenReturn(newGame);
 
         gameController.rematchResponse(response);
 
         verify(gameService, times(1))
                 .respondToRematch("test-game-id", player2.getLogin(), true);
+        // Verify both players are notified on their personal channels
         verify(simpMessagingTemplate, times(1))
-                .convertAndSend(eq("/topic/game.test-game-id"), any(Game.class));
+                .convertAndSend(eq("/topic/game.rematch.accepted/" + player1.getLogin()), any(Game.class));
+        verify(simpMessagingTemplate, times(1))
+                .convertAndSend(eq("/topic/game.rematch.accepted/" + player2.getLogin()), any(Game.class));
     }
 
     @Test

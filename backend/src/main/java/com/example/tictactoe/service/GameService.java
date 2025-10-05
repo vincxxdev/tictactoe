@@ -230,24 +230,33 @@ public class GameService {
     }
 
     public Game respondToRematch(String gameId, String responderLogin, boolean accepted) throws InvalidParamException, InvalidGameException {
-        Game game = getGameById(gameId);
-        if (game.getRematchRequesterLogin() == null || game.getRematchRequesterLogin().equals(responderLogin)) {
+        Game oldGame = getGameById(gameId);
+        if (oldGame.getRematchRequesterLogin() == null || oldGame.getRematchRequesterLogin().equals(responderLogin)) {
             throw new InvalidGameException("No rematch request to respond to");
         }
 
         if (accepted) {
-            // Reset the game for a rematch
-            game.setBoard(new String[9]);
-            game.setStatus(GameStatus.IN_PROGRESS);
-            game.setWinner(null);
-            game.setCurrentPlayerLogin(game.getPlayer1().getLogin());
-            game.setSurrenderRequesterLogin(null);
+            // Create a new game with the same players
+            Game newGame = new Game();
+            newGame.setBoard(new String[9]);
+            newGame.setGameId(UUID.randomUUID().toString());
+            newGame.setPlayer1(oldGame.getPlayer1());
+            newGame.setPlayer2(oldGame.getPlayer2());
+            newGame.setStatus(GameStatus.IN_PROGRESS);
+            newGame.setCurrentPlayerLogin(oldGame.getPlayer1().getLogin());
+            gameStorage.setGame(newGame);
+            
+            // Clear rematch request from old game and mark it as completed
+            oldGame.setRematchRequesterLogin(null);
+            gameStorage.setGame(oldGame);
+            
+            return newGame;
+        } else {
+            // Just clear the rematch request from the old game
+            oldGame.setRematchRequesterLogin(null);
+            oldGame.updateLastActivity();
+            gameStorage.setGame(oldGame);
+            return oldGame;
         }
-
-        // Reset rematch request after response
-        game.setRematchRequesterLogin(null);
-        game.updateLastActivity();
-        gameStorage.setGame(game);
-        return game;
     }
 }

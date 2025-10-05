@@ -90,6 +90,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     const gameData = JSON.parse(message.body);
                     setGame(gameData);
                 });
+                // Subscribe to rematch accepted notifications (new game created)
+                socketService.subscribe(`/topic/game.rematch.accepted/${playerLogin}`, (message) => {
+                    const gameData = JSON.parse(message.body);
+                    setGame(gameData);
+                    subscribeToGameTopic(gameData.gameId);
+                });
             });
 
             return () => {

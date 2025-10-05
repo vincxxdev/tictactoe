@@ -119,7 +119,15 @@ public class GameController {
     public void rematchResponse(@Valid RematchResponse response) throws InvalidParamException, InvalidGameException {
         log.info("rematch response from: {} in game {} -> {}", response.getPlayerLogin(), response.getGameId(), response.isAccepted());
         Game game = gameService.respondToRematch(response.getGameId(), response.getPlayerLogin(), response.isAccepted());
-        simpMessagingTemplate.convertAndSend("/topic/game." + game.getGameId(), game);
+        
+        if (response.isAccepted()) {
+            // Notify both players about the new game via their personal channels
+            simpMessagingTemplate.convertAndSend("/topic/game.rematch.accepted/" + game.getPlayer1().getLogin(), game);
+            simpMessagingTemplate.convertAndSend("/topic/game.rematch.accepted/" + game.getPlayer2().getLogin(), game);
+        } else {
+            // Notify on the old game topic that rematch was declined
+            simpMessagingTemplate.convertAndSend("/topic/game." + response.getGameId(), game);
+        }
     }
 
     @GetMapping("/api/games/available")

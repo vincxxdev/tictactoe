@@ -476,6 +476,7 @@ class GameServiceTest {
     void testRespondToRematch_Accepted() throws InvalidParamException, InvalidGameException {
         // Create and finish a game
         Game game = gameService.createGame(player1);
+        String oldGameId = game.getGameId();
         game.setPlayer2(player2);
         game.setStatus(GameStatus.FINISHED);
         game.setWinner(TicToe.X);
@@ -485,18 +486,30 @@ class GameServiceTest {
         gameStorage.setGame(game);
 
         // Accept rematch
-        Game rematchGame = gameService.respondToRematch(game.getGameId(), player2.getLogin(), true);
+        Game newGame = gameService.respondToRematch(game.getGameId(), player2.getLogin(), true);
 
-        assertNotNull(rematchGame);
-        assertNull(rematchGame.getRematchRequesterLogin());
-        assertEquals(GameStatus.IN_PROGRESS, rematchGame.getStatus());
-        assertNull(rematchGame.getWinner());
-        assertEquals(player1.getLogin(), rematchGame.getCurrentPlayerLogin());
+        // Verify a NEW game was created (different gameId)
+        assertNotNull(newGame);
+        assertNotEquals(oldGameId, newGame.getGameId());
+        assertNull(newGame.getRematchRequesterLogin());
+        assertEquals(GameStatus.IN_PROGRESS, newGame.getStatus());
+        assertNull(newGame.getWinner());
+        assertEquals(player1.getLogin(), newGame.getCurrentPlayerLogin());
+        
+        // Verify same players
+        assertEquals(player1.getLogin(), newGame.getPlayer1().getLogin());
+        assertEquals(player2.getLogin(), newGame.getPlayer2().getLogin());
         
         // Check board is reset
-        for (String cell : rematchGame.getBoard()) {
+        for (String cell : newGame.getBoard()) {
             assertNull(cell);
         }
+        
+        // Verify old game still exists but rematch request is cleared
+        Game oldGame = gameStorage.getGames().get(oldGameId);
+        assertNotNull(oldGame);
+        assertNull(oldGame.getRematchRequesterLogin());
+        assertEquals(GameStatus.FINISHED, oldGame.getStatus());
     }
 
     @Test
