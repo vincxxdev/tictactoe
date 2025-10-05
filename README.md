@@ -42,6 +42,7 @@ A real-time multiplayer Tic Tac Toe game built with React (TypeScript) and Sprin
 - [Troubleshooting](#-troubleshooting)
 - [API Endpoints](#-api-endpoints)
 - [Security](#-security-considerations)
+- [CI/CD Pipeline](#-cicd-pipeline)
 - [Future Improvements](#-future-improvements)
 
 ## 🚀 Quick Start
@@ -548,9 +549,69 @@ rm -rf target
 - Sanitize user inputs
 - Keep dependencies updated
 
+## 🔄 CI/CD Pipeline
+
+This project includes a comprehensive CI/CD setup using GitHub Actions with multiple automated workflows.
+
+### Workflow Overview
+
+**Continuous Integration:**
+- ✅ **Frontend CI** - Linting, testing, and building on Node.js 18 & 20
+- ✅ **Backend CI** - Testing, security scanning on Java 17 & 21
+- ✅ **Integration Tests** - Full stack testing with Docker Compose
+- ✅ **Code Quality** - CodeQL analysis, dependency review, Lighthouse performance
+
+**Continuous Deployment:**
+- 🚀 **CD Pipeline** - Automated Docker image building and publishing to GitHub Container Registry
+- 📦 **Release Management** - Automated release creation with artifacts and changelog
+
+**Pull Request Automation:**
+- 📝 **PR Checks** - Semantic PR titles, commit validation, size labeling
+- 👥 **Auto-assign** - Automatic reviewer assignment
+
+### Quick CI/CD Commands
+
+**Trigger a release:**
+```bash
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+```
+
+**Pull published Docker images:**
+```bash
+docker pull ghcr.io/<owner>/<repo>/frontend:latest
+docker pull ghcr.io/<owner>/<repo>/backend:latest
+```
+
+**View workflow status:**
+```bash
+# Visit your repository → Actions tab
+# Or add badges to your README:
+```
+
+![Frontend CI](https://github.com/<owner>/<repo>/workflows/Frontend%20CI/badge.svg)
+![Backend CI](https://github.com/<owner>/<repo>/workflows/Backend%20CI/badge.svg)
+
+### Documentation
+
+For complete CI/CD documentation, see [CI_CD_DOCUMENTATION.md](.github/CI_CD_DOCUMENTATION.md)
+
+**What's included:**
+- 7 automated workflows covering CI, CD, quality, and releases
+- Multi-version testing (Node.js 18/20, Java 17/21)
+- Docker image caching and optimization
+- Code coverage reporting with Codecov
+- Security scanning with OWASP and CodeQL
+- Automated releases with changelog generation
+- Conventional commit validation
+- PR size labeling and auto-review assignment
+
+
+
 ## 🚀 Future Improvements
 
 - [x] ~~Add Redis for distributed storage~~
+- [x] ~~Add CI/CD pipeline~~ 
 - [ ] Implement user authentication
 - [ ] Add game history and statistics (persist to database)
 - [ ] Implement matchmaking with ELO rating
@@ -559,7 +620,6 @@ rm -rf target
 - [ ] Mobile app with React Native
 - [ ] Add animations and sound effects
 - [ ] Add Pub/Sub for multi-instance WebSocket synchronization
-- [ ] Add CI/CD pipeline
 - [ ] Implement rate limiting
 - [ ] Add comprehensive monitoring
 
