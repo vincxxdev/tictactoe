@@ -158,9 +158,19 @@ jobs:
     - name: Configure SSH
       run: |
         install -m 700 -d ~/.ssh
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+        printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+        
+        # Verify key format
+        if ! head -1 ~/.ssh/deploy_key | grep -q "BEGIN.*PRIVATE KEY"; then
+          echo "❌ ERROR: Invalid SSH key format"
+          echo "The EC2_SSH_KEY secret doesn't appear to be a valid SSH private key"
+          echo "Expected format: -----BEGIN ... PRIVATE KEY-----"
+          exit 1
+        fi
+        
+        # Add EC2 host to known_hosts
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
     
     - name: Create deployment package
       run: |
