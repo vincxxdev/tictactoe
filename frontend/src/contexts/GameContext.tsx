@@ -80,7 +80,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
                     setJoinPending(true);
                 });
                 // Subscribe to join rejected notifications
-                socketService.subscribe(`/topic/game.join.rejected/${playerLogin}`, (message) => {
+                socketService.subscribe(`/topic/game.join.rejected/${playerLogin}`, () => {
                     setJoinPending(false);
                     setGame(null);
                     alert('Your join request was rejected by the game creator.');
@@ -190,6 +190,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
+// Custom hook to use GameContext
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGame = () => {
     const context = useContext(GameContext);
     if (context === undefined) {

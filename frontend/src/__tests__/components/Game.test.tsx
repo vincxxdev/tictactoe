@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { vi, Mock } from 'vitest';
+import { vi } from 'vitest';
 
 import Game from '../../components/Game';
 import * as GameContext from '../../contexts/GameContext';

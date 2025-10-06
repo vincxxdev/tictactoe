@@ -5,4 +5,5 @@
 import '@testing-library/jest-dom';
 
 // Set React ACT environment for React 19
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
