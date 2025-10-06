@@ -50,10 +50,10 @@ describe('Board Component', () => {
 
   test('applies correct grid layout classes', () => {
     const mockOnClick = jest.fn();
-    const { container } = render(<Board squares={emptyBoard} onClick={mockOnClick} />);
+    render(<Board squares={emptyBoard} onClick={mockOnClick} />);
     
-    const gridDiv = container.firstChild;
-    expect(gridDiv).toHaveClass('grid', 'grid-cols-3', 'gap-4');
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0].parentElement).toHaveClass('grid', 'grid-cols-3', 'gap-4');
   });
 });
 
