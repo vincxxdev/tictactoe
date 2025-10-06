@@ -17,10 +17,7 @@ services:
       - tictactoe-network
 
   backend:
-    # Use pre-built image from GHCR (for CI/CD deployment)
-    # image: ghcr.io/vincxxdev/tictactoe/backend:main
-    # Or build locally (for manual deployment)
-    build: ./backend
+    image: ghcr.io/vincxxdev/tictactoe/backend:main
     container_name: tictactoe-backend-prod
     ports:
       - "8080:8080"
@@ -52,15 +49,7 @@ services:
           memory: 256M
 
   frontend:
-    # Use pre-built image from GHCR (for CI/CD deployment)
-    # image: ghcr.io/vincxxdev/tictactoe/frontend:main
-    # Or build locally (for manual deployment)
-    build:
-      context: ./frontend
-      args:
-        - REACT_APP_API_URL=${REACT_APP_API_URL}
-        - REACT_APP_WS_URL=${REACT_APP_WS_URL}
-        - REACT_APP_ENV=production
+    image: ghcr.io/vincxxdev/tictactoe/frontend:main
     container_name: tictactoe-frontend-prod
     ports:
       - "80:80"
