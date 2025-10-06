@@ -382,6 +382,10 @@ tictactoe/
    - Click "Surrender" button if you want to forfeit
    - Opponent can accept or decline your surrender
 
+4. **Rematch**:
+   - After one player win the match, click "Rematch" button if you want to challange again the same person
+   - Opponent can accept or decline your rematch
+
 ## 🛠️ Development Tips
 
 ### Backend
