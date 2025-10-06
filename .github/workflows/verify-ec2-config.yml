@@ -1,0 +1,215 @@
+name: Verify EC2 Deployment Configuration
+
+on:
+  workflow_dispatch:  # Allow manual execution from Actions tab
+  pull_request:
+    paths:
+      - '.github/workflows/cd.yml'
+      - 'docker-compose.deploy.yml'
+
+jobs:
+  verify-secrets:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Check EC2 deployment secrets
+      run: |
+        echo "🔍 Verifying EC2 deployment configuration..."
+        echo ""
+        
+        MISSING_SECRETS=0
+        
+        # Check EC2_SSH_KEY
+        if [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+          echo "❌ EC2_SSH_KEY is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ EC2_SSH_KEY is configured"
+        fi
+        
+        # Check EC2_HOST
+        if [ -z "${{ secrets.EC2_HOST }}" ]; then
+          echo "❌ EC2_HOST is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ EC2_HOST is configured"
+        fi
+        
+        # Check EC2_USER
+        if [ -z "${{ secrets.EC2_USER }}" ]; then
+          echo "❌ EC2_USER is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ EC2_USER is configured"
+        fi
+        
+        # Check REDIS_PASSWORD
+        if [ -z "${{ secrets.REDIS_PASSWORD }}" ]; then
+          echo "❌ REDIS_PASSWORD is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ REDIS_PASSWORD is configured"
+        fi
+        
+        # Check CORS_ALLOWED_ORIGINS
+        if [ -z "${{ secrets.CORS_ALLOWED_ORIGINS }}" ]; then
+          echo "❌ CORS_ALLOWED_ORIGINS is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ CORS_ALLOWED_ORIGINS is configured"
+        fi
+        
+        # Check WEBSOCKET_ALLOWED_ORIGINS
+        if [ -z "${{ secrets.WEBSOCKET_ALLOWED_ORIGINS }}" ]; then
+          echo "❌ WEBSOCKET_ALLOWED_ORIGINS is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ WEBSOCKET_ALLOWED_ORIGINS is configured"
+        fi
+        
+        # Check REACT_APP_API_URL
+        if [ -z "${{ secrets.REACT_APP_API_URL }}" ]; then
+          echo "❌ REACT_APP_API_URL is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ REACT_APP_API_URL is configured"
+        fi
+        
+        # Check REACT_APP_WS_URL
+        if [ -z "${{ secrets.REACT_APP_WS_URL }}" ]; then
+          echo "❌ REACT_APP_WS_URL is NOT configured"
+          MISSING_SECRETS=$((MISSING_SECRETS + 1))
+        else
+          echo "✅ REACT_APP_WS_URL is configured"
+        fi
+        
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        if [ $MISSING_SECRETS -eq 0 ]; then
+          echo "✅ All secrets are configured correctly!"
+          echo ""
+          echo "You can now deploy to EC2 by pushing to main branch"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 0
+        else
+          echo "❌ $MISSING_SECRETS secret(s) missing!"
+          echo ""
+          echo "📚 Please configure missing secrets:"
+          echo "   1. Go to: Repository → Settings → Secrets and variables → Actions"
+          echo "   2. Click 'New repository secret'"
+          echo "   3. See GITHUB_SECRETS_TEMPLATE.md for detailed instructions"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          exit 1
+        fi
+    
+    - name: Verify deployment files exist
+      run: |
+        echo "🔍 Verifying deployment files..."
+        
+        FILES_OK=0
+        
+        if [ ! -f "docker-compose.deploy.yml" ]; then
+          echo "❌ docker-compose.deploy.yml not found"
+          FILES_OK=1
+        else
+          echo "✅ docker-compose.deploy.yml exists"
+        fi
+        
+        if [ ! -f ".env.production.example" ]; then
+          echo "❌ .env.production.example not found"
+          FILES_OK=1
+        else
+          echo "✅ .env.production.example exists"
+        fi
+        
+        if [ ! -f "scripts/deploy-to-ec2.sh" ]; then
+          echo "❌ scripts/deploy-to-ec2.sh not found"
+          FILES_OK=1
+        else
+          echo "✅ scripts/deploy-to-ec2.sh exists"
+        fi
+        
+        if [ $FILES_OK -ne 0 ]; then
+          echo "❌ Some deployment files are missing"
+          exit 1
+        fi
+        
+        echo "✅ All deployment files are present"
+    
+    - name: Validate docker-compose.deploy.yml
+      run: |
+        echo "🔍 Validating docker-compose.deploy.yml..."
+        
+        # Check if images are correctly specified
+        if grep -q "ghcr.io/vincxxdev/tictactoe" docker-compose.deploy.yml; then
+          echo "✅ GHCR images are correctly configured"
+        else
+          echo "❌ GHCR images not found in docker-compose.deploy.yml"
+          exit 1
+        fi
+        
+        # Check for required services
+        for service in redis backend frontend; do
+          if grep -q "^  $service:" docker-compose.deploy.yml; then
+            echo "✅ Service '$service' is defined"
+          else
+            echo "❌ Service '$service' is missing"
+            exit 1
+          fi
+        done
+        
+        echo "✅ docker-compose.deploy.yml is valid"
+    
+    - name: Test SSH key format (if configured)
+      if: secrets.EC2_SSH_KEY != ''
+      run: |
+        echo "🔍 Validating SSH key format..."
+        
+        # Create temp file with the key
+        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/test_key
+        
+        # Check if it's a valid SSH key format
+        if head -1 /tmp/test_key | grep -q "BEGIN.*PRIVATE KEY"; then
+          echo "✅ SSH key has correct format"
+        else
+          echo "❌ SSH key doesn't appear to be in correct format"
+          echo "   Expected: -----BEGIN ... PRIVATE KEY-----"
+          echo "   Make sure you copied the PRIVATE key (not .pub)"
+          rm /tmp/test_key
+          exit 1
+        fi
+        
+        # Check permissions requirements
+        chmod 600 /tmp/test_key
+        
+        # Clean up
+        rm /tmp/test_key
+        
+        echo "✅ SSH key format is valid"
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📋 Verification Summary"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "If all checks passed, you're ready to deploy!"
+        echo ""
+        echo "Next steps:"
+        echo "  1. Make sure EC2 instance is running"
+        echo "  2. Push to main branch to trigger deployment"
+        echo "  3. Monitor deployment in Actions tab"
+        echo ""
+        echo "📚 Documentation:"
+        echo "  - QUICKSTART_EC2.md - Quick setup guide"
+        echo "  - EC2_DEPLOYMENT_SETUP.md - Detailed setup"
+        echo "  - GITHUB_SECRETS_TEMPLATE.md - Secrets configuration"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
