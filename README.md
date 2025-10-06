@@ -369,6 +369,7 @@ tictactoe/
 1. **Start a Game**:
    - Click "Create New Game" to start a new room
    - Share the Game ID with a friend
+   - Or click "Join Game" to se all games available
    - Or click "Join Random Game" to find an opponent
 
 2. **Gameplay**:
