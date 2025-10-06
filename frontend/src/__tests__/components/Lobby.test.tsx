@@ -1,16 +1,15 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import Lobby from '../../components/Lobby';
 import { GameProvider } from '../../contexts/GameContext';
 
 // Mock socketService
-jest.mock('../../services/socketService', () => ({
-  __esModule: true,
+vi.mock('../../services/socketService', () => ({
   default: {
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    subscribe: jest.fn(),
-    sendMessage: jest.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    subscribe: vi.fn(),
+    sendMessage: vi.fn(),
   },
 }));
 

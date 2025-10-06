@@ -1,16 +1,16 @@
-import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import { vi, Mock } from 'vitest';
+
 import { GameProvider, useGame } from '../../contexts/GameContext';
 import socketService from '../../services/socketService';
 
 // Mock socketService
-jest.mock('../../services/socketService', () => ({
-  __esModule: true,
+vi.mock('../../services/socketService', () => ({
   default: {
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    subscribe: jest.fn(),
-    sendMessage: jest.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    subscribe: vi.fn(),
+    sendMessage: vi.fn(),
   },
 }));
 
@@ -20,7 +20,7 @@ describe('GameContext', () => {
   );
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('provides initial state', () => {
@@ -33,7 +33,7 @@ describe('GameContext', () => {
 
   test('throws error when useGame is used outside provider', () => {
     // Suppress console.error for this test
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     expect(() => {
       renderHook(() => useGame());
@@ -53,7 +53,7 @@ describe('GameContext', () => {
   });
 
   test('connects to socket when playerLogin is set', async () => {
-    const mockConnect = socketService.connect as jest.Mock;
+    const mockConnect = socketService.connect as Mock;
     const { result } = renderHook(() => useGame(), { wrapper });
 
     act(() => {
@@ -66,8 +66,8 @@ describe('GameContext', () => {
   });
 
   test('subscribes to player topics on connection', async () => {
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
     
     mockConnect.mockImplementation((callback) => {
       callback(); // Immediately call the callback to simulate connection
@@ -93,7 +93,7 @@ describe('GameContext', () => {
   });
 
   test('createGame sends correct message', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
     const { result } = renderHook(() => useGame(), { wrapper });
 
     act(() => {
@@ -110,7 +110,7 @@ describe('GameContext', () => {
   });
 
   test('connectToRandomGame sends correct message', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
     const { result } = renderHook(() => useGame(), { wrapper });
 
     act(() => {
@@ -127,7 +127,7 @@ describe('GameContext', () => {
   });
 
   test('connectToGameById sends correct message with gameId', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
     const { result } = renderHook(() => useGame(), { wrapper });
 
     act(() => {
@@ -145,9 +145,9 @@ describe('GameContext', () => {
   });
 
   test('makeMove sends correct message', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
 
     mockConnect.mockImplementation((callback) => {
       callback();
@@ -193,9 +193,9 @@ describe('GameContext', () => {
   });
 
   test('requestSurrender sends correct message', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
 
     mockConnect.mockImplementation((callback) => {
       callback();
@@ -237,9 +237,9 @@ describe('GameContext', () => {
   });
 
   test('respondToSurrender sends correct message with accepted true', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
 
     mockConnect.mockImplementation((callback) => {
       callback();
@@ -282,9 +282,9 @@ describe('GameContext', () => {
   });
 
   test('respondToSurrender sends correct message with accepted false', () => {
-    const mockSendMessage = socketService.sendMessage as jest.Mock;
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockSendMessage = socketService.sendMessage as Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
 
     mockConnect.mockImplementation((callback) => {
       callback();
@@ -327,7 +327,7 @@ describe('GameContext', () => {
   });
 
   test('disconnects socket on unmount', () => {
-    const mockDisconnect = socketService.disconnect as jest.Mock;
+    const mockDisconnect = socketService.disconnect as Mock;
     const { result, unmount } = renderHook(() => useGame(), { wrapper });
 
     act(() => {
@@ -340,8 +340,8 @@ describe('GameContext', () => {
   });
 
   test('updates game state when receiving game data', async () => {
-    const mockConnect = socketService.connect as jest.Mock;
-    const mockSubscribe = socketService.subscribe as jest.Mock;
+    const mockConnect = socketService.connect as Mock;
+    const mockSubscribe = socketService.subscribe as Mock;
 
     mockConnect.mockImplementation((callback) => {
       callback();

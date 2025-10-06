@@ -1,12 +1,12 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import Board from '../../components/Board';
 
 describe('Board Component', () => {
   const emptyBoard: ('X' | 'O' | null)[] = Array(9).fill(null);
 
   test('renders 9 squares', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Board squares={emptyBoard} onClick={mockOnClick} />);
     
     const buttons = screen.getAllByRole('button');
@@ -15,7 +15,7 @@ describe('Board Component', () => {
 
   test('renders squares with correct values', () => {
     const board: ('X' | 'O' | null)[] = ['X', 'O', 'X', null, null, null, null, null, null];
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Board squares={board} onClick={mockOnClick} />);
     
     const buttons = screen.getAllByRole('button');
@@ -26,7 +26,7 @@ describe('Board Component', () => {
   });
 
   test('calls onClick with correct index', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Board squares={emptyBoard} onClick={mockOnClick} />);
     
     const buttons = screen.getAllByRole('button');
@@ -36,7 +36,7 @@ describe('Board Component', () => {
   });
 
   test('calls onClick for different squares', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Board squares={emptyBoard} onClick={mockOnClick} />);
     
     const buttons = screen.getAllByRole('button');
@@ -49,7 +49,7 @@ describe('Board Component', () => {
   });
 
   test('applies correct grid layout classes', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Board squares={emptyBoard} onClick={mockOnClick} />);
     
     const buttons = screen.getAllByRole('button');

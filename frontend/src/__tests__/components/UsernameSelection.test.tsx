@@ -1,12 +1,12 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi, Mock } from 'vitest';
 import UsernameSelection from '../../components/UsernameSelection';
 
 describe('UsernameSelection', () => {
-    let mockOnUsernameSelected: jest.Mock;
+    let mockOnUsernameSelected: Mock;
 
     beforeEach(() => {
-        mockOnUsernameSelected = jest.fn();
+        mockOnUsernameSelected = vi.fn();
         localStorage.clear();
     });
 

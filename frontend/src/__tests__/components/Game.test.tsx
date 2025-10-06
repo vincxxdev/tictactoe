@@ -1,16 +1,16 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi, Mock } from 'vitest';
+
 import Game from '../../components/Game';
 import * as GameContext from '../../contexts/GameContext';
 
 // Mock socketService
-jest.mock('../../services/socketService', () => ({
-  __esModule: true,
+vi.mock('../../services/socketService', () => ({
   default: {
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    subscribe: jest.fn(),
-    sendMessage: jest.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    subscribe: vi.fn(),
+    sendMessage: vi.fn(),
   },
 }));
 
@@ -24,27 +24,34 @@ describe('Game Component', () => {
     status: 'IN_PROGRESS' as const,
     winner: null,
     surrenderRequesterLogin: null,
+    pendingJoinPlayer: null,
+    rematchRequesterLogin: null,
   };
 
   const mockUseGame = {
     isConnected: true,
     game: mockGame,
     playerLogin: 'Player1',
-    setPlayerLogin: jest.fn(),
-    createGame: jest.fn(),
-    connectToRandomGame: jest.fn(),
-    connectToGameById: jest.fn(),
-    makeMove: jest.fn(),
-    requestSurrender: jest.fn(),
-    respondToSurrender: jest.fn(),
+    setPlayerLogin: vi.fn(),
+    createGame: vi.fn(),
+    connectToRandomGame: vi.fn(),
+    connectToGameById: vi.fn(),
+    makeMove: vi.fn(),
+    requestSurrender: vi.fn(),
+    respondToSurrender: vi.fn(),
+    joinPending: false,
+    respondToJoinRequest: vi.fn(),
+    requestRematch: vi.fn(),
+    respondToRematch: vi.fn(),
+    returnToLobby: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.spyOn(GameContext, 'useGame').mockReturnValue(mockUseGame);
+    vi.spyOn(GameContext, 'useGame').mockReturnValue(mockUseGame);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('renders game board', () => {
@@ -73,7 +80,7 @@ describe('Game Component', () => {
       ...mockGame,
       currentPlayerLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithOpponentTurn,
     });
@@ -89,7 +96,7 @@ describe('Game Component', () => {
       status: 'FINISHED' as const,
       winner: 'X' as const,
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: finishedGame,
     });
@@ -106,7 +113,7 @@ describe('Game Component', () => {
       winner: 'O' as const,
       currentPlayerLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: finishedGame,
     });
@@ -122,7 +129,7 @@ describe('Game Component', () => {
       status: 'FINISHED' as const,
       winner: null,
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: drawGame,
     });
@@ -133,8 +140,8 @@ describe('Game Component', () => {
   });
 
   test('calls makeMove when square is clicked during player turn', () => {
-    const makeMoveMock = jest.fn();
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    const makeMoveMock = vi.fn();
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       makeMove: makeMoveMock,
     });
@@ -148,12 +155,12 @@ describe('Game Component', () => {
   });
 
   test('does not call makeMove when it is not player turn', () => {
-    const makeMoveMock = jest.fn();
+    const makeMoveMock = vi.fn();
     const gameWithOpponentTurn = {
       ...mockGame,
       currentPlayerLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithOpponentTurn,
       makeMove: makeMoveMock,
@@ -168,12 +175,12 @@ describe('Game Component', () => {
   });
 
   test('does not call makeMove when square is occupied', () => {
-    const makeMoveMock = jest.fn();
+    const makeMoveMock = vi.fn();
     const gameWithMove = {
       ...mockGame,
       board: ['X', null, null, null, null, null, null, null, null] as ('X' | 'O' | null)[],
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithMove,
       makeMove: makeMoveMock,
@@ -194,8 +201,8 @@ describe('Game Component', () => {
   });
 
   test('calls requestSurrender when surrender button is clicked', () => {
-    const requestSurrenderMock = jest.fn();
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    const requestSurrenderMock = vi.fn();
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       requestSurrender: requestSurrenderMock,
     });
@@ -213,7 +220,7 @@ describe('Game Component', () => {
       ...mockGame,
       surrenderRequesterLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithSurrenderRequest,
     });
@@ -225,12 +232,12 @@ describe('Game Component', () => {
   });
 
   test('calls respondToSurrender with true when accept is clicked', () => {
-    const respondToSurrenderMock = jest.fn();
+    const respondToSurrenderMock = vi.fn();
     const gameWithSurrenderRequest = {
       ...mockGame,
       surrenderRequesterLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithSurrenderRequest,
       respondToSurrender: respondToSurrenderMock,
@@ -245,12 +252,12 @@ describe('Game Component', () => {
   });
 
   test('calls respondToSurrender with false when decline is clicked', () => {
-    const respondToSurrenderMock = jest.fn();
+    const respondToSurrenderMock = vi.fn();
     const gameWithSurrenderRequest = {
       ...mockGame,
       surrenderRequesterLogin: 'Player2',
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: gameWithSurrenderRequest,
       respondToSurrender: respondToSurrenderMock,
@@ -276,7 +283,7 @@ describe('Game Component', () => {
       status: 'FINISHED' as const,
       winner: 'X' as const,
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: finishedGame,
     });
@@ -293,7 +300,7 @@ describe('Game Component', () => {
       player2: null,
       status: 'NEW' as const,
     };
-    jest.spyOn(GameContext, 'useGame').mockReturnValue({
+    vi.spyOn(GameContext, 'useGame').mockReturnValue({
       ...mockUseGame,
       game: newGame,
     });

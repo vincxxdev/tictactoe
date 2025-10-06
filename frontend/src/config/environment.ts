@@ -1,9 +1,9 @@
 const config = {
-  apiUrl: process.env.REACT_APP_API_URL || 'http://localhost:8080',
-  wsUrl: process.env.REACT_APP_WS_URL || 'http://localhost:8080/ws',
-  environment: process.env.REACT_APP_ENV || 'development',
-  isDevelopment: process.env.REACT_APP_ENV === 'development',
-  isProduction: process.env.REACT_APP_ENV === 'production',
+  apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  wsUrl: import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws',
+  environment: import.meta.env.VITE_ENV || 'development',
+  isDevelopment: import.meta.env.VITE_ENV === 'development',
+  isProduction: import.meta.env.VITE_ENV === 'production',
 };
 
 export default config;

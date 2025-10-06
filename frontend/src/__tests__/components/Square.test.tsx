@@ -1,10 +1,10 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import Square from '../../components/Square';
 
 describe('Square Component', () => {
   test('renders empty square', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Square value={null} onClick={mockOnClick} />);
     
     const button = screen.getByRole('button');
@@ -13,7 +13,7 @@ describe('Square Component', () => {
   });
 
   test('renders square with X', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Square value="X" onClick={mockOnClick} />);
     
     const button = screen.getByRole('button');
@@ -21,7 +21,7 @@ describe('Square Component', () => {
   });
 
   test('renders square with O', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Square value="O" onClick={mockOnClick} />);
     
     const button = screen.getByRole('button');
@@ -29,7 +29,7 @@ describe('Square Component', () => {
   });
 
   test('calls onClick when clicked', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Square value={null} onClick={mockOnClick} />);
     
     const button = screen.getByRole('button');
@@ -39,7 +39,7 @@ describe('Square Component', () => {
   });
 
   test('applies correct CSS classes', () => {
-    const mockOnClick = jest.fn();
+    const mockOnClick = vi.fn();
     render(<Square value={null} onClick={mockOnClick} />);
     
     const button = screen.getByRole('button');
