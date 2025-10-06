@@ -137,15 +137,84 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Deploy to production
+    - name: Configure SSH
       run: |
-        echo "Deployment step - configure based on your infrastructure"
-        echo "Examples:"
-        echo "- Deploy to Kubernetes cluster"
-        echo "- Update Docker Compose on remote server"
-        echo "- Deploy to cloud platform (AWS, Azure, GCP)"
-        echo "- Update serverless functions"
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+    
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        cp docker-compose.deploy.yml deploy/docker-compose.yml
+        cp .env.production.example deploy/.env.example
+    
+    - name: Deploy to EC2
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+      run: |
+        # Create .env file locally
+        cat > deploy/.env << 'ENVFILE'
+        REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+        CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+        WEBSOCKET_ALLOWED_ORIGINS=${{ secrets.WEBSOCKET_ALLOWED_ORIGINS }}
+        REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}
+        REACT_APP_WS_URL=${{ secrets.REACT_APP_WS_URL }}
+        ENVFILE
+        
+        # Copy files to EC2
+        scp -i ~/.ssh/deploy_key deploy/docker-compose.yml $EC2_USER@$EC2_HOST:~/tictactoe/
+        scp -i ~/.ssh/deploy_key deploy/.env $EC2_USER@$EC2_HOST:~/tictactoe/
+        
+        # Deploy on EC2
+        ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST << 'EOF'
+          cd ~/tictactoe
+          
+          # Login to GitHub Container Registry
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+          # Pull latest images
+          docker-compose pull
+          
+          # Stop existing containers
+          docker-compose down || true
+          
+          # Start new containers
+          docker-compose up -d
+          
+          # Wait for services to be healthy
+          echo "Waiting for services to start..."
+          sleep 30
+          
+          # Check service health
+          docker-compose ps
+          
+          # Cleanup old images
+          docker image prune -f
+        EOF
+    
+    - name: Verify deployment
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd ~/tictactoe
+          
+          # Check if all containers are running
+          if [ $(docker-compose ps --services --filter "status=running" | wc -l) -eq 3 ]; then
+            echo "✅ All services are running"
+            exit 0
+          else
+            echo "❌ Some services failed to start"
+            docker-compose logs --tail=50
+            exit 1
+          fi
+        EOF
+    
+    - name: Cleanup SSH
+      if: always()
+      run: rm -f ~/.ssh/deploy_key
     
     - name: Deployment notification
       run: |
-        echo "::notice::Successfully deployed version ${{ github.sha }} to production"
+        echo "::notice::Successfully deployed version ${{ github.sha }} to production on EC2"

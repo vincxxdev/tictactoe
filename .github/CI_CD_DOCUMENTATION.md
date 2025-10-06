@@ -223,6 +223,28 @@ ci: add Docker layer caching
 
 ## Deployment
 
+### Automated Deployment to EC2
+
+The project includes a fully automated CI/CD pipeline that deploys to AWS EC2 on every push to the `main` branch.
+
+**Setup Guide:** See [EC2_DEPLOYMENT_SETUP.md](EC2_DEPLOYMENT_SETUP.md) for detailed configuration instructions.
+
+**Quick Setup:**
+1. Configure GitHub Secrets (see EC2_DEPLOYMENT_SETUP.md)
+2. Push to `main` branch
+3. GitHub Actions automatically deploys to EC2
+
+### Manual Deployment to EC2
+
+For manual deployments, use the provided script:
+
+```bash
+./scripts/deploy-to-ec2.sh EC2_HOST EC2_USER [SSH_KEY_PATH]
+
+# Example:
+./scripts/deploy-to-ec2.sh ec2-12-34-56-78.compute.amazonaws.com ec2-user ~/.ssh/deploy_key
+```
+
 ### Manual Deployment
 
 1. Tag a new version:
