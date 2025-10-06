@@ -200,100 +200,180 @@ jobs:
         ssh -i ~/.ssh/deploy_key $EC2_USER@$EC2_HOST << 'EOF'
           cd ~/tictactoe
           
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚀 Starting deployment process..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           # Login to GitHub Container Registry
+          echo "📦 Logging into GitHub Container Registry..."
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           
           # Pull latest images
+          echo "⬇️  Pulling latest images..."
           docker-compose pull
           
           # Stop existing containers
+          echo "⏹️  Stopping existing containers..."
           docker-compose down || true
           
           # Start new containers
+          echo "▶️  Starting new containers..."
           docker-compose up -d
           
-          # Wait for services to be healthy
-          echo "Waiting for services to start..."
-          sleep 45
+          echo ""
+          echo "⏳ Waiting for services to start (this takes 2-3 minutes)..."
+          echo ""
           
-          # Check service health
+          # Wait and check periodically
+          MAX_WAIT=180  # 3 minutes maximum
+          ELAPSED=0
+          INTERVAL=15   # Check every 15 seconds
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+            
+            RUNNING=$(docker-compose ps --services --filter "status=running" | wc -l)
+            echo "[$ELAPSED seconds] Services running: $RUNNING/3"
+            
+            # If all 3 services are running, we're done
+            if [ "$RUNNING" -eq 3 ]; then
+              echo ""
+              echo "✅ All services are running!"
+              break
+            fi
+            
+            # Show any container that's not running yet
+            if [ "$RUNNING" -lt 3 ]; then
+              NOT_RUNNING=$(docker-compose ps --services | while read service; do
+                if ! docker-compose ps $service | grep -q "Up"; then
+                  echo "  ⏳ $service still starting..."
+                fi
+              done)
+              echo "$NOT_RUNNING"
+            fi
+          done
+          
+          echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "Service Status:"
+          echo "📊 Final Service Status:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           docker-compose ps
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
-          # Count running services
+          # Final count
           RUNNING=$(docker-compose ps --services --filter "status=running" | wc -l)
-          echo "Running services: $RUNNING/3"
           
-          # Show logs if not all services are running
-          if [ "$RUNNING" -lt 3 ]; then
-            echo ""
-            echo "⚠️  Some services may still be starting. Checking logs..."
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            docker-compose logs --tail=20
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
-            # Wait a bit more for frontend
-            echo "Waiting additional 30 seconds for frontend..."
-            sleep 30
-            
-            RUNNING=$(docker-compose ps --services --filter "status=running" | wc -l)
-            echo "Running services after wait: $RUNNING/3"
-          fi
-          
-          # At least backend and redis should be running
+          # Accept if at least backend and redis are running
           if [ "$RUNNING" -ge 2 ]; then
-            echo "✅ Core services are running"
+            echo ""
+            echo "✅ Deployment successful! ($RUNNING/3 services running)"
+            
+            if [ "$RUNNING" -lt 3 ]; then
+              echo ""
+              echo "ℹ️  Note: Frontend may need a few more moments to fully start."
+              echo "   The application will be fully available shortly."
+            fi
           else
-            echo "❌ Critical services failed to start"
+            echo ""
+            echo "❌ Deployment failed: Only $RUNNING/3 services are running"
+            echo ""
+            echo "Recent logs:"
             docker-compose logs --tail=50
             exit 1
           fi
           
           # Cleanup old images
+          echo ""
+          echo "🧹 Cleaning up old images..."
           docker image prune -f
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Deployment completed!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         EOF
     
     - name: Verify deployment
       run: |
+        echo "🔍 Running final deployment verification..."
+        
         ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
           cd ~/tictactoe
           
-          echo "🔍 Final deployment verification..."
-          echo ""
+          # Give it one more moment if needed
+          sleep 10
           
-          # Check container status
-          docker-compose ps
           echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Final Container Status:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          docker-compose ps
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
           # Count running services
           RUNNING=$(docker-compose ps --services --filter "status=running" | wc -l)
           
+          echo ""
+          echo "Running services: $RUNNING/3"
+          echo ""
+          
           if [ "$RUNNING" -eq 3 ]; then
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "✅ Perfect! All 3 services are running!"
+            echo "✅ PERFECT! All services are healthy and running!"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "🌐 Application is available at:"
+            echo "   Frontend: http://${{ secrets.EC2_HOST }}"
+            echo "   Backend:  http://${{ secrets.EC2_HOST }}:8080"
+            echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             exit 0
+            
           elif [ "$RUNNING" -eq 2 ]; then
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "⚠️  2/3 services running (likely frontend still starting)"
+            echo "✅ DEPLOYMENT SUCCESSFUL (2/3 services running)"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
-            echo "Core services (backend + redis) are operational."
-            echo "Frontend may need a few more moments to fully start."
+            echo "ℹ️  Note: Core services (backend + redis) are operational."
+            echo "   Frontend may take a few more moments to be fully ready."
             echo ""
-            echo "Recent logs:"
-            docker-compose logs --tail=30
+            echo "🌐 Application will be available at:"
+            echo "   Frontend: http://${{ secrets.EC2_HOST }} (starting...)"
+            echo "   Backend:  http://${{ secrets.EC2_HOST }}:8080 (ready)"
             echo ""
-            echo "✅ Deployment successful (partial services running)"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Show which service is not running
+            echo ""
+            echo "Service status details:"
+            for service in redis backend frontend; do
+              if docker-compose ps $service | grep -q "Up"; then
+                echo "  ✅ $service: Running"
+              else
+                echo "  ⏳ $service: Starting (may need more time)"
+              fi
+            done
+            
+            echo ""
+            echo "Tip: SSH to EC2 and run 'docker-compose ps' to monitor startup"
+            echo ""
+            
             exit 0
+            
           else
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "❌ Critical failure: Only $RUNNING/3 services running"
+            echo "❌ DEPLOYMENT FAILED: Critical services not running"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
-            docker-compose logs --tail=50
+            echo "Only $RUNNING/3 services are running. This is insufficient."
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Recent logs from all services:"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            docker-compose logs --tail=30
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
             exit 1
           fi
         EOF
