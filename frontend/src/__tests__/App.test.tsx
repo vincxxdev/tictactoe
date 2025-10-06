@@ -45,8 +45,8 @@ describe('App Component', () => {
     // Should now see the lobby
     await waitFor(() => {
       expect(screen.getByText('Create New Game')).toBeInTheDocument();
-      expect(screen.getByText(/NewPlayer/i)).toBeInTheDocument();
     });
+    expect(screen.getByText(/NewPlayer/i)).toBeInTheDocument();
   });
 
   test('always requires username selection on fresh load', () => {
