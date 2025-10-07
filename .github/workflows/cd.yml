@@ -1,4 +1,4 @@
-name: Continuous Deployment with AWS EC2 and AWS SSM
+name: Continuous Deployment
 
 on:
   push:
