@@ -230,11 +230,31 @@ jobs:
         
         chmod +x deploy/deploy.sh
     
-    - name: Copy files to EC2 via SSM
+    - name: Copy files to EC2 via S3
       run: |
-        # Create a temporary script to copy files
-        cat > /tmp/copy-files.sh << 'EOF'
+        # Create a unique deployment ID
+        DEPLOY_ID="${{ github.sha }}-$(date +%s)"
+        S3_BUCKET="tictactoe-deployments-${{ secrets.AWS_REGION }}"
+        
+        # Create S3 bucket if it doesn't exist
+        aws s3 mb "s3://${S3_BUCKET}" 2>/dev/null || true
+        
+        # Upload deployment files to S3
+        aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${DEPLOY_ID}/docker-compose.yml"
+        aws s3 cp deploy/.env "s3://${S3_BUCKET}/${DEPLOY_ID}/.env"
+        aws s3 cp deploy/deploy.sh "s3://${S3_BUCKET}/${DEPLOY_ID}/deploy.sh"
+        
+        echo "DEPLOY_ID=${DEPLOY_ID}" >> $GITHUB_ENV
+        echo "S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
+    
+    - name: Deploy to EC2 via SSM
+      run: |
+        echo "Starting deployment on EC2..."
+        
+        # Create simple deployment script that downloads from S3
+        DOWNLOAD_AND_DEPLOY='
         #!/bin/bash
+        set -e
         
         # Determine home directory
         if [ -d "/home/ec2-user" ]; then
@@ -245,39 +265,27 @@ jobs:
         
         # Create directory
         mkdir -p $HOME_DIR/tictactoe
+        cd $HOME_DIR/tictactoe
         
-        # Write docker-compose.yml
-        cat > $HOME_DIR/tictactoe/docker-compose.yml << 'COMPOSEEOF'
-        $(cat deploy/docker-compose.yml)
-        COMPOSEEOF
+        # Download files from S3
+        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/docker-compose.yml ./docker-compose.yml
+        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/.env ./.env
+        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/deploy.sh ./deploy.sh
+        chmod +x ./deploy.sh
         
-        # Write .env file
-        cat > $HOME_DIR/tictactoe/.env << 'ENVEOF'
-        $(cat deploy/.env)
-        ENVEOF
+        # Set environment variables
+        export GITHUB_TOKEN="'"${{ secrets.GITHUB_TOKEN }}"'"
+        export GITHUB_ACTOR="'"${{ github.actor }}"'"
         
-        echo "Files copied successfully to $HOME_DIR/tictactoe"
-        EOF
-        
-        # Send the script via SSM
-        aws ssm send-command \
-          --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
-          --document-name "AWS-RunShellScript" \
-          --parameters 'commands=["bash /tmp/copy-files.sh"]' \
-          --output text
-    
-    - name: Deploy to EC2 via SSM
-      run: |
-        echo "Starting deployment on EC2..."
-        
-        # Create deployment command
-        COMMAND=$(cat deploy/deploy.sh)
+        # Run deployment
+        ./deploy.sh
+        '
         
         # Send deployment command via SSM
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=[\"export GITHUB_TOKEN='${{ secrets.GITHUB_TOKEN }}'\",\"export GITHUB_ACTOR='${{ github.actor }}'\",\"bash -c '$COMMAND'\"]" \
+          --parameters commands="$DOWNLOAD_AND_DEPLOY" \
           --output text \
           --query 'Command.CommandId')
         
@@ -304,6 +312,9 @@ jobs:
               --query 'StandardOutputContent' \
               --output text
             
+            # Cleanup S3 files
+            aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
+            
             exit 0
           elif [ "$STATUS" = "Failed" ]; then
             echo "Deployment failed!"
@@ -315,6 +326,9 @@ jobs:
               --query 'StandardErrorContent' \
               --output text
             
+            # Cleanup S3 files
+            aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
+            
             exit 1
           fi
           
@@ -322,6 +336,8 @@ jobs:
         done
         
         echo "Deployment timed out"
+        # Cleanup S3 files
+        aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
         exit 1
     
     - name: Deployment notification
