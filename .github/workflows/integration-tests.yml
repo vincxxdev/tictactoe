@@ -69,7 +69,7 @@ jobs:
     
     - name: Run integration tests
       working-directory: frontend
-      run: npm test -- --watchAll=false
+      run: npm test -- --run
       env:
         CI: true
         REACT_APP_API_URL: http://localhost:8080
