@@ -140,22 +140,22 @@ jobs:
     - name: Verify secrets are configured
       run: |
         if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-          echo "ERROR: AWS_ACCESS_KEY_ID secret is not configured"
+          echo "❌ ERROR: AWS_ACCESS_KEY_ID secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-          echo "ERROR: AWS_SECRET_ACCESS_KEY secret is not configured"
+          echo "❌ ERROR: AWS_SECRET_ACCESS_KEY secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.AWS_REGION }}" ]; then
-          echo "ERROR: AWS_REGION secret is not configured"
+          echo "❌ ERROR: AWS_REGION secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.EC2_INSTANCE_ID }}" ]; then
-          echo "ERROR: EC2_INSTANCE_ID secret is not configured"
+          echo "❌ ERROR: EC2_INSTANCE_ID secret is not configured"
           exit 1
         fi
-        echo "All required secrets are configured"
+        echo "✅ All required secrets are configured"
     
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -185,47 +185,47 @@ jobs:
         
         cd /home/ec2-user/tictactoe || cd /home/ubuntu/tictactoe || exit 1
         
-        echo "=============================================="
-        echo "Starting deployment process..."
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🚀 Starting deployment process..."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         # Create directory if it doesn't exist
         mkdir -p /home/ec2-user/tictactoe 2>/dev/null || mkdir -p /home/ubuntu/tictactoe
         
         # Login to GitHub Container Registry
-        echo "Logging into GitHub Container Registry..."
+        echo "📦 Logging into GitHub Container Registry..."
         echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
         
         # Pull latest images
-        echo "Pulling latest images..."
+        echo "⬇️  Pulling latest images..."
         docker-compose pull
         
         # Stop existing containers
-        echo "Stopping existing containers..."
+        echo "⏹️  Stopping existing containers..."
         docker-compose down || true
         
         # Start new containers
-        echo "Starting new containers..."
+        echo "▶️  Starting new containers..."
         docker-compose up -d
         
         echo ""
-        echo "Waiting for services to start..."
+        echo "⏳ Waiting for services to start..."
         sleep 30
         
         echo ""
-        echo "=============================================="
-        echo "Service Status:"
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📊 Service Status:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         docker-compose ps
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         # Cleanup old images
         echo ""
-        echo "Cleaning up old images..."
+        echo "🧹 Cleaning up old images..."
         docker image prune -f
         
         echo ""
-        echo "Deployment completed!"
+        echo "✅ Deployment completed!"
         DEPLOYEOF
         
         chmod +x deploy/deploy.sh
@@ -268,7 +268,7 @@ jobs:
     
     - name: Deploy to EC2 via SSM
       run: |
-        echo "Starting deployment on EC2..."
+        echo "🚀 Starting deployment on EC2..."
         
         # Create deployment command
         COMMAND=$(cat deploy/deploy.sh)
@@ -295,7 +295,7 @@ jobs:
           echo "Status: $STATUS"
           
           if [ "$STATUS" = "Success" ]; then
-            echo "Deployment successful!"
+            echo "✅ Deployment successful!"
             
             # Get command output
             aws ssm get-command-invocation \
@@ -306,7 +306,7 @@ jobs:
             
             exit 0
           elif [ "$STATUS" = "Failed" ]; then
-            echo "Deployment failed!"
+            echo "❌ Deployment failed!"
             
             # Get error output
             aws ssm get-command-invocation \
@@ -321,7 +321,7 @@ jobs:
           sleep 10
         done
         
-        echo "Deployment timed out"
+        echo "❌ Deployment timed out"
         exit 1
     
     - name: Deployment notification
