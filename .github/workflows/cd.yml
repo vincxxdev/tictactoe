@@ -257,14 +257,15 @@ jobs:
           --document-name "AWS-RunShellScript" \
           --parameters 'commands=[
             "if [ -d /home/ec2-user ]; then HOME_DIR=/home/ec2-user; else HOME_DIR=/home/ubuntu; fi",
-            "mkdir -p $HOME_DIR/tictactoe",
-            "cd $HOME_DIR/tictactoe",
+            "mkdir -p ${HOME_DIR}/tictactoe",
+            "cd ${HOME_DIR}/tictactoe",
             "echo Downloading deployment files from S3...",
             "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/docker-compose.yml docker-compose.yml",
             "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/.env .env",
             "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/deploy.sh deploy.sh",
             "chmod +x deploy.sh",
-            "echo Files downloaded successfully"
+            "ls -la",
+            "echo Files downloaded successfully to ${HOME_DIR}/tictactoe"
           ]' \
           --output text \
           --query 'Command.CommandId')
@@ -318,8 +319,10 @@ jobs:
           --document-name "AWS-RunShellScript" \
           --parameters 'commands=[
             "if [ -d /home/ec2-user ]; then HOME_DIR=/home/ec2-user; else HOME_DIR=/home/ubuntu; fi",
-            "cd $HOME_DIR/tictactoe",
-            "if [ ! -f deploy.sh ]; then echo Error: deploy.sh not found; exit 1; fi",
+            "cd ${HOME_DIR}/tictactoe",
+            "pwd",
+            "ls -la",
+            "if [ ! -f deploy.sh ]; then echo Error: deploy.sh not found in $(pwd); exit 1; fi",
             "export GITHUB_TOKEN='"'"'${{ secrets.GITHUB_TOKEN }}'"'"'",
             "export GITHUB_ACTOR='"'"'${{ github.actor }}'"'"'",
             "bash deploy.sh"
