@@ -246,15 +246,31 @@ jobs:
         # Create directory
         mkdir -p $HOME_DIR/tictactoe
         
-        # Write docker-compose.yml
-        cat > $HOME_DIR/tictactoe/docker-compose.yml << 'COMPOSEEOF'
-        $(cat deploy/docker-compose.yml)
+        # Write docker-compose.yml using base64
+        cat > $HOME_DIR/tictactoe/docker-compose.yml.b64 << 'COMPOSEEOF'
+        $(base64 -w 0 deploy/docker-compose.yml)
         COMPOSEEOF
+        base64 -d $HOME_DIR/tictactoe/docker-compose.yml.b64 > $HOME_DIR/tictactoe/docker-compose.yml
+        rm $HOME_DIR/tictactoe/docker-compose.yml.b64
         
-        # Write .env file
-        cat > $HOME_DIR/tictactoe/.env << 'ENVEOF'
-        $(cat deploy/.env)
+        # Write .env file using base64
+        cat > $HOME_DIR/tictactoe/.env.b64 << 'ENVEOF'
+        $(base64 -w 0 deploy/.env)
         ENVEOF
+        base64 -d $HOME_DIR/tictactoe/.env.b64 > $HOME_DIR/tictactoe/.env
+        rm $HOME_DIR/tictactoe/.env.b64# Write docker-compose.yml using base64
+        cat > $HOME_DIR/tictactoe/docker-compose.yml.b64 << 'COMPOSEEOF'
+        $(base64 -w 0 deploy/docker-compose.yml)
+        COMPOSEEOF
+        base64 -d $HOME_DIR/tictactoe/docker-compose.yml.b64 > $HOME_DIR/tictactoe/docker-compose.yml
+        rm $HOME_DIR/tictactoe/docker-compose.yml.b64
+        
+        # Write .env file using base64
+        cat > $HOME_DIR/tictactoe/.env.b64 << 'ENVEOF'
+        $(base64 -w 0 deploy/.env)
+        ENVEOF
+        base64 -d $HOME_DIR/tictactoe/.env.b64 > $HOME_DIR/tictactoe/.env
+        rm $HOME_DIR/tictactoe/.env.b64
         
         echo "Files copied successfully to $HOME_DIR/tictactoe"
         EOF
