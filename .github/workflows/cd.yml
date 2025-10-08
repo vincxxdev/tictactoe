@@ -140,22 +140,26 @@ jobs:
     - name: Verify secrets are configured
       run: |
         if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-          echo "ERROR: AWS_ACCESS_KEY_ID secret is not configured"
+          echo "❌ ERROR: AWS_ACCESS_KEY_ID secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
-          echo "ERROR: AWS_SECRET_ACCESS_KEY secret is not configured"
+          echo "❌ ERROR: AWS_SECRET_ACCESS_KEY secret is not configured"
+          exit 1
+        fi
+        if [ -z "${{ secrets.DEPLOYMENT_S3_BUCKET }}" ]; then
+          echo "❌ ERROR: DEPLOYMENT_S3_BUCKET secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.AWS_REGION }}" ]; then
-          echo "ERROR: AWS_REGION secret is not configured"
+          echo "❌ ERROR: AWS_REGION secret is not configured"
           exit 1
         fi
         if [ -z "${{ secrets.EC2_INSTANCE_ID }}" ]; then
-          echo "ERROR: EC2_INSTANCE_ID secret is not configured"
+          echo "❌ ERROR: EC2_INSTANCE_ID secret is not configured"
           exit 1
         fi
-        echo "All required secrets are configured"
+        echo "✅ All required secrets are configured"
     
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -185,135 +189,123 @@ jobs:
         
         cd /home/ec2-user/tictactoe || cd /home/ubuntu/tictactoe || exit 1
         
-        echo "=============================================="
-        echo "Starting deployment process..."
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🚀 Starting deployment process..."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         # Create directory if it doesn't exist
         mkdir -p /home/ec2-user/tictactoe 2>/dev/null || mkdir -p /home/ubuntu/tictactoe
         
         # Login to GitHub Container Registry
-        echo "Logging into GitHub Container Registry..."
+        echo "📦 Logging into GitHub Container Registry..."
         echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
         
         # Pull latest images
-        echo "Pulling latest images..."
+        echo "⬇️  Pulling latest images..."
         docker-compose pull
         
         # Stop existing containers
-        echo "Stopping existing containers..."
+        echo "⏹️  Stopping existing containers..."
         docker-compose down || true
         
         # Start new containers
-        echo "Starting new containers..."
+        echo "▶️  Starting new containers..."
         docker-compose up -d
         
         echo ""
-        echo "Waiting for services to start..."
+        echo "⏳ Waiting for services to start..."
         sleep 30
         
         echo ""
-        echo "=============================================="
-        echo "Service Status:"
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📊 Service Status:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         docker-compose ps
-        echo "=============================================="
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         # Cleanup old images
         echo ""
-        echo "Cleaning up old images..."
+        echo "🧹 Cleaning up old images..."
         docker image prune -f
         
         echo ""
-        echo "Deployment completed!"
+        echo "✅ Deployment completed!"
         DEPLOYEOF
         
         chmod +x deploy/deploy.sh
     
-    - name: Copy files to EC2 via S3
+    - name: Upload files to S3
       run: |
-        # Create a unique deployment ID
-        DEPLOY_ID="${{ github.sha }}-$(date +%s)"
-        S3_BUCKET="tictactoe-deployments-${{ secrets.AWS_REGION }}"
+        S3_BUCKET="${{ secrets.DEPLOYMENT_S3_BUCKET }}"
+        S3_PREFIX="deployments/${{ github.sha }}"
         
-        # Create S3 bucket if it doesn't exist
-        if ! aws s3 ls "s3://${S3_BUCKET}" 2>/dev/null; then
-          echo "Creating S3 bucket: ${S3_BUCKET}"
-          aws s3 mb "s3://${S3_BUCKET}" --region "${{ secrets.AWS_REGION }}"
+        echo "📤 Uploading deployment files to S3..."
+        aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${S3_PREFIX}/docker-compose.yml"
+        aws s3 cp deploy/.env "s3://${S3_BUCKET}/${S3_PREFIX}/.env"
+        
+        echo "✅ Files uploaded to s3://${S3_BUCKET}/${S3_PREFIX}/"
+    
+    - name: Copy files from S3 to EC2 via SSM
+      run: |
+        S3_BUCKET="${{ secrets.DEPLOYMENT_S3_BUCKET }}"
+        S3_PREFIX="deployments/${{ github.sha }}"
+        
+        # Send command to download files from S3
+        COMMAND_ID=$(aws ssm send-command \
+          --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+          --document-name "AWS-RunShellScript" \
+          --parameters "commands=[
+            \"# Determine home directory\",
+            \"if [ -d '/home/ec2-user' ]; then HOME_DIR='/home/ec2-user'; else HOME_DIR='/home/ubuntu'; fi\",
+            \"mkdir -p \$HOME_DIR/tictactoe\",
+            \"cd \$HOME_DIR/tictactoe\",
+            \"echo '📥 Downloading deployment files from S3...'\",
+            \"aws s3 cp s3://${S3_BUCKET}/${S3_PREFIX}/docker-compose.yml docker-compose.yml\",
+            \"aws s3 cp s3://${S3_BUCKET}/${S3_PREFIX}/.env .env\",
+            \"echo '✅ Files downloaded successfully'\"
+          ]" \
+          --output text \
+          --query 'Command.CommandId')
+        
+        echo "Command ID: $COMMAND_ID"
+        echo "Waiting for file transfer to complete..."
+        
+        # Wait for command to complete
+        for i in {1..30}; do
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query 'Status' \
+            --output text)
           
-          # Enable versioning for safety
-          aws s3api put-bucket-versioning \
-            --bucket "${S3_BUCKET}" \
-            --versioning-configuration Status=Enabled
+          if [ "$STATUS" = "Success" ]; then
+            echo "✅ Files copied successfully!"
+            break
+          elif [ "$STATUS" = "Failed" ]; then
+            echo "❌ File transfer failed!"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+              --query 'StandardErrorContent' \
+              --output text
+            exit 1
+          fi
           
-          # Set lifecycle policy to delete old deployments after 7 days
-          cat > /tmp/lifecycle.json << 'EOF'
-        {
-          "Rules": [
-            {
-              "Id": "DeleteOldDeployments",
-              "Status": "Enabled",
-              "Prefix": "",
-              "Expiration": {
-                "Days": 7
-              }
-            }
-          ]
-        }
-        EOF
-          aws s3api put-bucket-lifecycle-configuration \
-            --bucket "${S3_BUCKET}" \
-            --lifecycle-configuration file:///tmp/lifecycle.json
-        fi
-        
-        # Upload deployment files to S3
-        echo "Uploading deployment files to S3..."
-        aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${DEPLOY_ID}/docker-compose.yml"
-        aws s3 cp deploy/.env "s3://${S3_BUCKET}/${DEPLOY_ID}/.env"
-        aws s3 cp deploy/deploy.sh "s3://${S3_BUCKET}/${DEPLOY_ID}/deploy.sh"
-        
-        echo "DEPLOY_ID=${DEPLOY_ID}" >> $GITHUB_ENV
-        echo "S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
+          sleep 5
+        done
     
     - name: Deploy to EC2 via SSM
       run: |
-        echo "Starting deployment on EC2..."
+        echo "🚀 Starting deployment on EC2..."
         
-        # Create simple deployment script that downloads from S3
-        DOWNLOAD_AND_DEPLOY='
-        #!/bin/bash
-        set -e
-        
-        # Determine home directory
-        if [ -d "/home/ec2-user" ]; then
-          HOME_DIR="/home/ec2-user"
-        else
-          HOME_DIR="/home/ubuntu"
-        fi
-        
-        # Create directory
-        mkdir -p $HOME_DIR/tictactoe
-        cd $HOME_DIR/tictactoe
-        
-        # Download files from S3
-        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/docker-compose.yml ./docker-compose.yml
-        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/.env ./.env
-        aws s3 cp s3://'"$S3_BUCKET"'/'"$DEPLOY_ID"'/deploy.sh ./deploy.sh
-        chmod +x ./deploy.sh
-        
-        # Set environment variables
-        export GITHUB_TOKEN="'"${{ secrets.GITHUB_TOKEN }}"'"
-        export GITHUB_ACTOR="'"${{ github.actor }}"'"
-        
-        # Run deployment
-        ./deploy.sh
-        '
+        # Create deployment command
+        COMMAND=$(cat deploy/deploy.sh)
         
         # Send deployment command via SSM
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters commands="$DOWNLOAD_AND_DEPLOY" \
+          --parameters "commands=[\"export GITHUB_TOKEN='${{ secrets.GITHUB_TOKEN }}'\",\"export GITHUB_ACTOR='${{ github.actor }}'\",\"bash -c '$COMMAND'\"]" \
           --output text \
           --query 'Command.CommandId')
         
@@ -331,7 +323,7 @@ jobs:
           echo "Status: $STATUS"
           
           if [ "$STATUS" = "Success" ]; then
-            echo "Deployment successful!"
+            echo "✅ Deployment successful!"
             
             # Get command output
             aws ssm get-command-invocation \
@@ -340,12 +332,9 @@ jobs:
               --query 'StandardOutputContent' \
               --output text
             
-            # Cleanup S3 files
-            aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
-            
             exit 0
           elif [ "$STATUS" = "Failed" ]; then
-            echo "Deployment failed!"
+            echo "❌ Deployment failed!"
             
             # Get error output
             aws ssm get-command-invocation \
@@ -354,18 +343,13 @@ jobs:
               --query 'StandardErrorContent' \
               --output text
             
-            # Cleanup S3 files
-            aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
-            
             exit 1
           fi
           
           sleep 10
         done
         
-        echo "Deployment timed out"
-        # Cleanup S3 files
-        aws s3 rm "s3://${S3_BUCKET}/${DEPLOY_ID}/" --recursive
+        echo "❌ Deployment timed out"
         exit 1
     
     - name: Deployment notification

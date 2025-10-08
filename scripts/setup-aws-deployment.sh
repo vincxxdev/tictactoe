@@ -329,21 +329,14 @@ create_github_actions_user() {
             "Sid": "SSMCommandExecution",
             "Effect": "Allow",
             "Action": [
-                "ssm:SendCommand"
+                "ssm:SendCommand",
+                "ssm:GetCommandInvocation",
+                "ssm:ListCommandInvocations"
             ],
             "Resource": [
                 "arn:aws:ec2:${REGION}:${ACCOUNT_ID}:instance/${INSTANCE_ID}",
                 "arn:aws:ssm:${REGION}::document/AWS-RunShellScript"
             ]
-        },
-        {
-            "Sid": "SSMGetCommandStatus",
-            "Effect": "Allow",
-            "Action": [
-                "ssm:GetCommandInvocation",
-                "ssm:ListCommandInvocations"
-            ],
-            "Resource": "*"
         },
         {
             "Sid": "SSMDescribeInstances",

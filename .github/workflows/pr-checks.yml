@@ -40,6 +40,8 @@ jobs:
     
     - name: Conventional commits check
       uses: wagoid/commitlint-github-action@v6
+      with:
+        configFile: commitlint.config.cjs
 
   size-label:
     name: PR Size Labeling
