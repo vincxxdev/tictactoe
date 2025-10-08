@@ -258,7 +258,8 @@ jobs:
         $(base64 -w 0 deploy/.env)
         ENVEOF
         base64 -d $HOME_DIR/tictactoe/.env.b64 > $HOME_DIR/tictactoe/.env
-        rm $HOME_DIR/tictactoe/.env.b64# Write docker-compose.yml using base64
+        rm $HOME_DIR/tictactoe/.env.b64
+        # Write docker-compose.yml using base64
         cat > $HOME_DIR/tictactoe/docker-compose.yml.b64 << 'COMPOSEEOF'
         $(base64 -w 0 deploy/docker-compose.yml)
         COMPOSEEOF

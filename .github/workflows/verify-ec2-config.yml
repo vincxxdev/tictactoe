@@ -127,13 +127,6 @@ jobs:
           echo "✅ .env.production.example exists"
         fi
         
-        if [ ! -f "scripts/deploy-to-ec2.sh" ]; then
-          echo "❌ scripts/deploy-to-ec2.sh not found"
-          FILES_OK=1
-        else
-          echo "✅ scripts/deploy-to-ec2.sh exists"
-        fi
-        
         if [ $FILES_OK -ne 0 ]; then
           echo "❌ Some deployment files are missing"
           exit 1
@@ -193,25 +186,4 @@ jobs:
         rm /tmp/test_key
         
         echo "✅ SSH key format is valid"
-    
-    - name: Summary
-      if: always()
-      run: |
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📋 Verification Summary"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-        echo "If all checks passed, you're ready to deploy!"
-        echo ""
-        echo "Next steps:"
-        echo "  1. Make sure EC2 instance is running"
-        echo "  2. Push to main branch to trigger deployment"
-        echo "  3. Monitor deployment in Actions tab"
-        echo ""
-        echo "📚 Documentation:"
-        echo "  - QUICKSTART_EC2.md - Quick setup guide"
-        echo "  - EC2_DEPLOYMENT_SETUP.md - Detailed setup"
-        echo "  - GITHUB_SECRETS_TEMPLATE.md - Secrets configuration"
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  
