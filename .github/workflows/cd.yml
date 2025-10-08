@@ -282,7 +282,7 @@ jobs:
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=[\"echo '${{ secrets.GITHUB_TOKEN }}' > /tmp/github_token && chmod 600 /tmp/github_token\",\"export GITHUB_TOKEN=$(cat /tmp/github_token)\",\"export GITHUB_ACTOR='${{ github.actor }}'\",\"bash -c '$COMMAND'\"]" \
+          --parameters "commands=[\"export GITHUB_TOKEN='${{ secrets.GITHUB_TOKEN }}'\",\"export GITHUB_ACTOR='${{ github.actor }}'\",\"bash -c '$COMMAND'\"]" \
           --output text \
           --query 'Command.CommandId')
         
