@@ -166,7 +166,7 @@ jobs:
         echo "✅ docker-compose.deploy.yml is valid"
     
     - name: Test SSH key format (if configured)
-      if: secrets.EC2_SSH_KEY != ''
+      if: ${{ secrets.EC2_SSH_KEY != '' }}
       run: |
         echo "🔍 Validating SSH key format..."
         
