@@ -237,37 +237,9 @@ jobs:
         S3_BUCKET="tictactoe-deployments-${{ secrets.AWS_REGION }}"
         
         # Create S3 bucket if it doesn't exist
-        if ! aws s3 ls "s3://${S3_BUCKET}" 2>/dev/null; then
-          echo "Creating S3 bucket: ${S3_BUCKET}"
-          aws s3 mb "s3://${S3_BUCKET}" --region "${{ secrets.AWS_REGION }}"
-          
-          # Enable versioning for safety
-          aws s3api put-bucket-versioning \
-            --bucket "${S3_BUCKET}" \
-            --versioning-configuration Status=Enabled
-          
-          # Set lifecycle policy to delete old deployments after 7 days
-          cat > /tmp/lifecycle.json << 'EOF'
-        {
-          "Rules": [
-            {
-              "Id": "DeleteOldDeployments",
-              "Status": "Enabled",
-              "Prefix": "",
-              "Expiration": {
-                "Days": 7
-              }
-            }
-          ]
-        }
-        EOF
-          aws s3api put-bucket-lifecycle-configuration \
-            --bucket "${S3_BUCKET}" \
-            --lifecycle-configuration file:///tmp/lifecycle.json
-        fi
+        aws s3 mb "s3://${S3_BUCKET}" 2>/dev/null || true
         
         # Upload deployment files to S3
-        echo "Uploading deployment files to S3..."
         aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${DEPLOY_ID}/docker-compose.yml"
         aws s3 cp deploy/.env "s3://${S3_BUCKET}/${DEPLOY_ID}/.env"
         aws s3 cp deploy/deploy.sh "s3://${S3_BUCKET}/${DEPLOY_ID}/deploy.sh"
