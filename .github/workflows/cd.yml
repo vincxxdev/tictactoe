@@ -240,11 +240,29 @@ jobs:
         S3_PREFIX="deployments/${{ github.sha }}"
         
         echo "Uploading deployment files to S3..."
+        
+        # Verify files exist before upload
+        if [ ! -f deploy/docker-compose.yml ]; then
+          echo "Error: deploy/docker-compose.yml not found"
+          exit 1
+        fi
+        if [ ! -f deploy/.env ]; then
+          echo "Error: deploy/.env not found"
+          exit 1
+        fi
+        if [ ! -f deploy/deploy.sh ]; then
+          echo "Error: deploy/deploy.sh not found"
+          ls -la deploy/
+          exit 1
+        fi
+        
         aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${S3_PREFIX}/docker-compose.yml"
         aws s3 cp deploy/.env "s3://${S3_BUCKET}/${S3_PREFIX}/.env"
         aws s3 cp deploy/deploy.sh "s3://${S3_BUCKET}/${S3_PREFIX}/deploy.sh"
         
         echo "Files uploaded to s3://${S3_BUCKET}/${S3_PREFIX}/"
+        echo "Verifying upload..."
+        aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/"
     
     - name: Copy files from S3 to EC2 via SSM
       run: |
@@ -256,16 +274,17 @@ jobs:
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
           --parameters 'commands=[
+            "set -e",
             "if [ -d /home/ec2-user ]; then HOME_DIR=/home/ec2-user; else HOME_DIR=/home/ubuntu; fi",
             "mkdir -p ${HOME_DIR}/tictactoe",
             "cd ${HOME_DIR}/tictactoe",
             "echo Downloading deployment files from S3...",
-            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/docker-compose.yml docker-compose.yml",
-            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/.env .env",
-            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/deploy.sh deploy.sh",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/docker-compose.yml docker-compose.yml || (echo Failed to download docker-compose.yml && exit 1)",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/.env .env || (echo Failed to download .env && exit 1)",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/deploy.sh deploy.sh || (echo Failed to download deploy.sh && exit 1)",
             "chmod +x deploy.sh",
-            "ls -la",
-            "echo Files downloaded successfully to ${HOME_DIR}/tictactoe"
+            "echo Files downloaded successfully:",
+            "ls -la *.sh *.yml .env"
           ]' \
           --output text \
           --query 'Command.CommandId')
