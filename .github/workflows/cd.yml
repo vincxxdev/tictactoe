@@ -189,9 +189,9 @@ jobs:
         
         cd /home/ec2-user/tictactoe || cd /home/ubuntu/tictactoe || exit 1
         
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "=============================================="
         echo "Starting deployment process..."
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "=============================================="
         
         # Create directory if it doesn't exist
         mkdir -p /home/ec2-user/tictactoe 2>/dev/null || mkdir -p /home/ubuntu/tictactoe
@@ -213,15 +213,15 @@ jobs:
         docker-compose up -d
         
         echo ""
-        echo "⏳ Waiting for services to start..."
+        echo "Waiting for services to start..."
         sleep 30
         
         echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "=============================================="
         echo "Service Status:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "=============================================="
         docker-compose ps
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "=============================================="
         
         # Cleanup old images
         echo ""
@@ -229,7 +229,7 @@ jobs:
         docker image prune -f
         
         echo ""
-        echo "Deployment completed!"
+        echo "Deployment completed successfully!"
         DEPLOYEOF
         
         chmod +x deploy/deploy.sh
@@ -242,6 +242,7 @@ jobs:
         echo "Uploading deployment files to S3..."
         aws s3 cp deploy/docker-compose.yml "s3://${S3_BUCKET}/${S3_PREFIX}/docker-compose.yml"
         aws s3 cp deploy/.env "s3://${S3_BUCKET}/${S3_PREFIX}/.env"
+        aws s3 cp deploy/deploy.sh "s3://${S3_BUCKET}/${S3_PREFIX}/deploy.sh"
         
         echo "Files uploaded to s3://${S3_BUCKET}/${S3_PREFIX}/"
     
@@ -254,16 +255,17 @@ jobs:
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=[
-            \"# Determine home directory\",
-            \"if [ -d '/home/ec2-user' ]; then HOME_DIR='/home/ec2-user'; else HOME_DIR='/home/ubuntu'; fi\",
-            \"mkdir -p \$HOME_DIR/tictactoe\",
-            \"cd \$HOME_DIR/tictactoe\",
-            \"echo 'Downloading deployment files from S3...'\",
-            \"aws s3 cp s3://${S3_BUCKET}/${S3_PREFIX}/docker-compose.yml docker-compose.yml\",
-            \"aws s3 cp s3://${S3_BUCKET}/${S3_PREFIX}/.env .env\",
-            \"echo 'Files downloaded successfully'\"
-          ]" \
+          --parameters 'commands=[
+            "if [ -d /home/ec2-user ]; then HOME_DIR=/home/ec2-user; else HOME_DIR=/home/ubuntu; fi",
+            "mkdir -p $HOME_DIR/tictactoe",
+            "cd $HOME_DIR/tictactoe",
+            "echo Downloading deployment files from S3...",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/docker-compose.yml docker-compose.yml",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/.env .env",
+            "aws s3 cp s3://'"${S3_BUCKET}"'/'"${S3_PREFIX}"'/deploy.sh deploy.sh",
+            "chmod +x deploy.sh",
+            "echo Files downloaded successfully"
+          ]' \
           --output text \
           --query 'Command.CommandId')
         
@@ -298,16 +300,62 @@ jobs:
       run: |
         echo "Starting deployment on EC2..."
         
-        # Create deployment command
-        COMMAND=$(cat deploy/deploy.sh)
-        
         # Send deployment command via SSM
         COMMAND_ID=$(aws ssm send-command \
           --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
           --document-name "AWS-RunShellScript" \
-          --parameters "commands=[\"export GITHUB_TOKEN='${{ secrets.GITHUB_TOKEN }}'\",\"export GITHUB_ACTOR='${{ github.actor }}'\",\"bash -c '$COMMAND'\"]" \
+          --parameters 'commands=[
+            "if [ -d /home/ec2-user ]; then HOME_DIR=/home/ec2-user; else HOME_DIR=/home/ubuntu; fi",
+            "cd $HOME_DIR/tictactoe",
+            "export GITHUB_TOKEN='"'"'${{ secrets.GITHUB_TOKEN }}'"'"'",
+            "export GITHUB_ACTOR='"'"'${{ github.actor }}'"'"'",
+            "./deploy.sh"
+          ]' \
           --output text \
           --query 'Command.CommandId')
+        
+        echo "Command ID: $COMMAND_ID"
+        echo "Waiting for deployment to complete..."
+        
+        # Wait for command to complete
+        for i in {1..60}; do
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query 'Status' \
+            --output text)
+          
+          echo "Status: $STATUS"
+          
+          if [ "$STATUS" = "Success" ]; then
+            echo "Deployment successful!"
+            
+            # Get command output
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+              --query 'StandardOutputContent' \
+              --output text
+            
+            exit 0
+          elif [ "$STATUS" = "Failed" ]; then
+            echo "Deployment failed!"
+            
+            # Get error output
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+              --query 'StandardErrorContent' \
+              --output text
+            
+            exit 1
+          fi
+          
+          sleep 10
+        done
+        
+        echo "Deployment timed out"
+        exit 1
         
         echo "Command ID: $COMMAND_ID"
         echo "Waiting for command to complete..."
